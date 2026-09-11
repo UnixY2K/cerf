@@ -1,5 +1,7 @@
 #include "msm8255_smem.h"
 
+#include "msm8255_ram_partitions.h"
+
 #include "../../boards/board_context.h"
 #include "../../boot/guest_cold_boot.h"
 #include "../../core/cerf_emulator.h"
@@ -52,6 +54,27 @@ constexpr uint32_t kTocAllocated    = 1u;
 constexpr uint32_t kIdClkregimBsp     = 336u;
 constexpr uint32_t kIdClkregimSources = 337u;
 
+/* Little Kernel platform/msm_shared/smem.h: SMEM_USABLE_RAM_PARTITION_TABLE,
+   struct smem_ram_ptable and its two magic words. */
+constexpr uint32_t kIdRamPtable  = 402u;
+constexpr uint32_t kPtableMagic1 = 0x9DA5E0A8u;
+constexpr uint32_t kPtableMagic2 = 0xAF9EC4E2u;
+
+constexpr uint32_t kPtableMagic2Off = 4u;
+constexpr uint32_t kPtableLenOff    = 16u;
+constexpr uint32_t kPtablePartsOff  = 20u;
+constexpr uint32_t kPtableMaxParts  = 32u;
+constexpr uint32_t kPtablePartBytes = 56u;
+constexpr uint32_t kPtableBytes =
+    kPtablePartsOff + kPtableMaxParts * kPtablePartBytes;
+
+constexpr uint32_t kPartStartOff    = 16u;
+constexpr uint32_t kPartSizeOff     = 20u;
+constexpr uint32_t kPartAttrOff     = 24u;
+constexpr uint32_t kPartCategoryOff = 28u;
+constexpr uint32_t kPartDomainOff   = 32u;
+constexpr uint32_t kPartTypeOff     = 36u;
+
 constexpr uint32_t kBspBytes  = 20456u;
 constexpr uint32_t kSrcBytes  = 208u;
 constexpr uint32_t kBspMagic  = 0xCCEE0003u;
@@ -92,7 +115,8 @@ constexpr uint32_t Align8(uint32_t v) { return (v + 7u) & ~7u; }
 
 constexpr uint32_t kBspOff = Align8(kFixedAreaEnd);
 constexpr uint32_t kSrcOff = Align8(kBspOff + kBspBytes);
-constexpr uint32_t kHeapUsedEnd = Align8(kSrcOff + kSrcBytes);
+constexpr uint32_t kPtableOff = Align8(kSrcOff + kSrcBytes);
+constexpr uint32_t kHeapUsedEnd = Align8(kPtableOff + kPtableBytes);
 
 }
 
@@ -172,6 +196,7 @@ void Msm8255Smem::Seed() {
 
     PublishItem(kIdClkregimBsp,     kBspOff, kBspBytes, kBspMagic);
     PublishItem(kIdClkregimSources, kSrcOff, kSrcBytes, kSrcMagic);
+    PublishRamPartitions();
 
     SeedSpeedRecord();
     SeedPerfLevels();
@@ -206,13 +231,44 @@ void Msm8255Smem::SeedAvsConfig() {
     mem.WriteWord(kSmemPa + kBspOff + kBspSawCfgOff, kSawCfgSeed);
 }
 
+void Msm8255Smem::PublishRamPartitions() {
+    auto* board = emu_.TryGet<Msm8255RamPartitions>();
+    if (!board) {
+        return;
+    }
+
+    const uint32_t count = board->PartitionCount();
+    if (count > kPtableMaxParts) {
+        emu_.Get<Fatal>().Die(
+            "msm8255 smem: the board declares %u ram partitions and the "
+            "partition table carries %u", count, kPtableMaxParts);
+    }
+
+    PublishItem(kIdRamPtable, kPtableOff, kPtableBytes, kPtableMagic1);
+
+    auto& mem = emu_.Get<EmulatedMemory>();
+    const uint32_t base = kSmemPa + kPtableOff;
+    mem.WriteWord(base + kPtableMagic2Off, kPtableMagic2);
+    mem.WriteWord(base + kPtableLenOff,    count);
+    for (uint32_t i = 0; i < count; ++i) {
+        const Msm8255RamPartition part = board->Partition(i);
+        const uint32_t rec = base + kPtablePartsOff + kPtablePartBytes * i;
+        mem.WriteWord(rec + kPartStartOff,    part.start);
+        mem.WriteWord(rec + kPartSizeOff,     part.size);
+        mem.WriteWord(rec + kPartAttrOff,     part.attr);
+        mem.WriteWord(rec + kPartCategoryOff, part.category);
+        mem.WriteWord(rec + kPartDomainOff,   part.domain);
+        mem.WriteWord(rec + kPartTypeOff,     part.type);
+    }
+}
+
 void Msm8255Smem::PublishItem(uint32_t id, uint32_t off, uint32_t size,
                               uint32_t magic) {
     auto& mem = emu_.Get<EmulatedMemory>();
     const uint32_t toc = TocEntryPa(id);
     mem.WriteWord(toc +  0u, 1u);
     mem.WriteWord(toc +  4u, off);
-    mem.WriteWord(toc +  8u, size);
+    mem.WriteWord(toc +  8u, Align8(size));
     mem.WriteWord(toc + 12u, 0u);
     mem.WriteWord(kSmemPa + off, magic);
 }

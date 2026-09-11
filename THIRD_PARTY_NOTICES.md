@@ -106,6 +106,7 @@ The file [`licenses/OFL-1.1.txt`](licenses/OFL-1.1.txt) contains the full licens
 - **[QEMU](https://www.qemu.org/)**
 - **[the Linux kernel](https://www.kernel.org/)**
 - **[Ganbold Tsagaankhuu's FreeBSD Qualcomm port](https://github.com/tsgan/qualcomm)**
+- **[Little Kernel](https://android.googlesource.com/kernel/lk)**
 - **[NetBSD](https://www.netbsd.org/)**
 - **[Dolphin](https://dolphin-emu.org/)**
 - **[MAME](https://www.mamedev.org/)**

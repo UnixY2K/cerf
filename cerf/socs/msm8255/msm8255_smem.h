@@ -23,5 +23,6 @@ private:
     void SeedSpeedRecord();
     void SeedPerfLevels();
     void SeedAvsConfig();
+    void PublishRamPartitions();
     void PublishItem(uint32_t id, uint32_t off, uint32_t size, uint32_t magic);
 };

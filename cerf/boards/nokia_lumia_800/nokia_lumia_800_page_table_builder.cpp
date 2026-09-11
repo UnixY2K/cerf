@@ -1,5 +1,7 @@
 #include "../page_table_builder.h"
 
+#include "../../socs/msm8255/msm8255_ram_partitions.h"
+
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../boards/board_context.h"
@@ -75,6 +77,14 @@ NokiaLumia800PageTableBuilder::BackedMemoryRegions() const {
     }
     regions.push_back({ kSharedRamPa, kSharedRamPa, kSharedRamSize,
                         PAGE_READWRITE });
+
+    auto& parts = emu_.Get<Msm8255RamPartitions>();
+    const uint32_t count = parts.PartitionCount();
+    for (uint32_t i = 0; i < count; ++i) {
+        const Msm8255RamPartition part = parts.Partition(i);
+        regions.push_back({ part.start, part.start, part.size,
+                            PAGE_READWRITE });
+    }
     return regions;
 }
 
