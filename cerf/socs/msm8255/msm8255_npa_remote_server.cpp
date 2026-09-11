@@ -40,7 +40,6 @@ constexpr uint32_t kIssueRequestResultWords = 2u;
 constexpr uint32_t kIssueRequestPayloadBytes = kPacmarkBytes + kCallArgsOff + 12u;
 
 constexpr uint32_t kReqArgHandleOff   = kCallArgsOff +  0u;
-constexpr uint32_t kReqArgValueOff    = kCallArgsOff +  4u;
 constexpr uint32_t kReqArgSuppliedOff = kCallArgsOff +  8u;
 
 constexpr uint32_t kCallPayloadBytes = 64u;
@@ -238,7 +237,6 @@ uint32_t Msm8255NpaRemoteServer::AnswerIssueRequest(
         *this, kProcIssueRequest, size, kIssueRequestPayloadBytes);
 
     const uint32_t handle   = Be32(mem.ReadWord(body + kReqArgHandleOff));
-    const uint32_t value    = Be32(mem.ReadWord(body + kReqArgValueOff));
     const uint32_t supplied = Be32(mem.ReadWord(body + kReqArgSuppliedOff));
 
     if (handle == 0u || handle > last_client_handle_) {
@@ -246,12 +244,6 @@ uint32_t Msm8255NpaRemoteServer::AnswerIssueRequest(
             "msm8255 npa remote server: the issue-request call names client "
             "handle %u, and this peer has issued %u", handle,
             last_client_handle_);
-    }
-    if (value != 0u) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 npa remote server: client handle %u requests %u of its "
-            "resource, and this peer drives no resource that can meet a "
-            "non-zero request", handle, value);
     }
     if (supplied != kXdrFalse) {
         emu_.Get<Fatal>().Die(
