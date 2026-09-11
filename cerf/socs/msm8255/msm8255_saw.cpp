@@ -95,7 +95,7 @@ private:
     }
 
     std::atomic<uint32_t> reg04_{kRegReset};
-    std::atomic<uint32_t> regs_[kRegFileCount];
+    std::atomic<uint32_t> regs_[kRegFileCount] = {};
 };
 
 }

@@ -182,7 +182,8 @@ void Msm8255Vic::DeAssertIrq(int source_bit) {
 
 uint32_t Msm8255Vic::ReadPendingVector() {
     std::lock_guard<std::mutex> lk(state_mutex_);
-    int found = -1;
+    int      found      = -1;
+    uint32_t found_prio = 0;
     if ((master_en_ & kMasterEnIrq) != 0u) {
         for (uint32_t b = 0; b < kBankCount; ++b) {
             uint32_t bits = IrqBank(b);
@@ -191,13 +192,19 @@ uint32_t Msm8255Vic::ReadPendingVector() {
                     b * kBitsPerBank +
                     static_cast<uint32_t>(std::countr_zero(bits));
                 bits &= bits - 1u;
+                const uint32_t prio = vect_priority_[src];
                 if (found >= 0) {
-                    emu_.Get<Fatal>().Die(
-                        "msm8255 vic: sources %d and %u are pending together; "
-                        "vectored-interface priority arbitration is not "
-                        "modelled", found, src);
+                    if (prio != found_prio) {
+                        emu_.Get<Fatal>().Die(
+                            "msm8255 vic: sources %d and %u are pending together "
+                            "at priorities %u and %u, and the order the vectored "
+                            "interface applies across priorities is not modelled",
+                            found, src, found_prio, prio);
+                    }
+                    continue;
                 }
-                found = static_cast<int>(src);
+                found      = static_cast<int>(src);
+                found_prio = prio;
             }
         }
     }
