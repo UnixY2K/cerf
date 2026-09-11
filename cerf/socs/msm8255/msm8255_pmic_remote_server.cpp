@@ -92,12 +92,7 @@ uint32_t Msm8255PmicRemoteServer::AnswerCall(uint32_t in_pa, uint32_t size,
             "msm8255 pmic remote server: rpc procedure %u with a %u-byte "
             "payload is not modeled", call.proc, size);
     }
-    if (size != kVregSetLevelPayloadBytes) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 pmic remote server: procedure %u carries %u payload bytes "
-            "and the modeled argument list is %u",
-            call.proc, size, kVregSetLevelPayloadBytes);
-    }
+    codec.RequireCallBytes(*this, call.proc, size, kVregSetLevelPayloadBytes);
 
     const uint32_t vreg_id  = Be32(mem.ReadWord(call.body + kArgVregIdOff));
     const uint32_t level_mv = Be32(mem.ReadWord(call.body + kArgLevelOff));

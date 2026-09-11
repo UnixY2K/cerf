@@ -151,11 +151,8 @@ void Msm8255NpaRemoteServer::ReadDefineNodeArgs(uint32_t body, uint32_t size,
                                                 uint32_t& object) {
     auto& mem = emu_.Get<EmulatedMemory>();
 
-    if (size != kCallPayloadBytes) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 npa remote server: the node-define call is %u bytes, and "
-            "only the %u-byte form is modeled", size, kCallPayloadBytes);
-    }
+    emu_.Get<Msm8255OncrpcCodec>().RequireCallBytes(*this, kProcDefineNode,
+                                                    size, kCallPayloadBytes);
 
     const uint32_t arg0 = Be32(mem.ReadWord(body + kCallArg0Off));
     const uint32_t arg1 = Be32(mem.ReadWord(body + kCallArg1Off));
@@ -180,12 +177,8 @@ void Msm8255NpaRemoteServer::ReadDefineResourceArgs(uint32_t body,
         emu_.Get<Msm8255OncrpcCodec>().SkipXdrString(body, size, kCallArgsOff,
                                                      1u);
     const uint32_t want = kPacmarkBytes + off + 8u;
-    if (size != want) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 npa remote server: the resource-define call is %u bytes, "
-            "and its name leaves its two trailing arguments needing %u", size,
-            want);
-    }
+    emu_.Get<Msm8255OncrpcCodec>().RequireCallBytes(*this, kProcDefineResource,
+                                                    size, want);
 
     callback = Be32(mem.ReadWord(body + off));
     object   = Be32(mem.ReadWord(body + off + 4u));
@@ -201,12 +194,7 @@ void Msm8255NpaRemoteServer::ReadCreateClientArgs(uint32_t body, uint32_t size,
     const uint32_t resource = codec.SkipXdrString(body, size, kCallArgsOff, 1u);
     const uint32_t client   = codec.SkipXdrString(body, size, resource, 2u);
     const uint32_t want     = kPacmarkBytes + client + 8u;
-    if (size != want) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 npa remote server: the create-client call is %u bytes, and "
-            "its two names leave its type and out-pointer needing %u", size,
-            want);
-    }
+    codec.RequireCallBytes(*this, kProcCreateClient, size, want);
 
     type     = Be32(mem.ReadWord(body + client));
     supplied = Be32(mem.ReadWord(body + client + 4u));
@@ -246,12 +234,8 @@ uint32_t Msm8255NpaRemoteServer::AnswerIssueRequest(
     uint32_t self_pid, uint32_t peer_pid, uint32_t peer_cid, uint32_t xid) {
     auto& mem = emu_.Get<EmulatedMemory>();
 
-    if (size != kIssueRequestPayloadBytes) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 npa remote server: the issue-request call is %u bytes, and "
-            "only the %u-byte form is modeled", size,
-            kIssueRequestPayloadBytes);
-    }
+    emu_.Get<Msm8255OncrpcCodec>().RequireCallBytes(
+        *this, kProcIssueRequest, size, kIssueRequestPayloadBytes);
 
     const uint32_t handle   = Be32(mem.ReadWord(body + kReqArgHandleOff));
     const uint32_t value    = Be32(mem.ReadWord(body + kReqArgValueOff));

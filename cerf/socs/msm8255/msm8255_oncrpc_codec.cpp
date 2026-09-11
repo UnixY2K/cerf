@@ -66,6 +66,18 @@ Msm8255OncrpcCall Msm8255OncrpcCodec::ParseCall(const Msm8255RpcServer& server,
     return {body, xid, proc};
 }
 
+void Msm8255OncrpcCodec::RequireCallBytes(const Msm8255RpcServer& server,
+                                          uint32_t proc, uint32_t size,
+                                          uint32_t want) {
+    if (size == want) {
+        return;
+    }
+    emu_.Get<Fatal>().Die(
+        "Service '%s': procedure %u carries %u payload bytes and the modeled "
+        "argument list is %u",
+        typeid(server).name(), proc, size, want);
+}
+
 /* RFC 4506 section 4.11: a string is its byte count as an unsigned integer,
    then that many bytes, then 0 to 3 zero bytes so the total is a multiple of
    four. */

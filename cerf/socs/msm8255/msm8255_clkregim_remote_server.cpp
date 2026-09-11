@@ -98,12 +98,7 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
             "msm8255 clkregim remote server: rpc procedure %u with a %u-byte "
             "payload is not modeled", call.proc, size);
     }
-    if (size != kConfigMdhPayloadBytes) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 clkregim remote server: procedure %u carries %u payload "
-            "bytes and the modeled argument list is %u",
-            call.proc, size, kConfigMdhPayloadBytes);
-    }
+    codec.RequireCallBytes(*this, call.proc, size, kConfigMdhPayloadBytes);
 
     const uint32_t index   = Be32(mem.ReadWord(call.body + kArgIndexOff));
     const uint32_t min_khz = Be32(mem.ReadWord(call.body + kArgMinOff));
