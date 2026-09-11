@@ -4,6 +4,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
+#include "../irq_controller.h"
 #include "../guest_cpu_reset.h"
 
 #include <atomic>
@@ -26,6 +27,15 @@ constexpr uint32_t kVersionValue = 0x04000000u;
    MDP_EBI2_PORTMAP_MODE. */
 constexpr uint32_t kRegEbi2PortmapMode = 0x00070u;
 
+/* Linux arch/arm/mach-msm video-msm mdp.h, the CONFIG_FB_MSM_MDP40 arm:
+   MDP_INTR_ENABLE, MDP_INTR_STATUS and MDP_INTR_CLEAR. */
+constexpr uint32_t kRegIntrEnable = 0x00050u;
+constexpr uint32_t kRegIntrStatus = 0x00054u;
+constexpr uint32_t kRegIntrClear  = 0x00058u;
+
+/* Linux arch/arm/mach-msm irqs-7x30.h: INT_MDP. */
+constexpr uint32_t kVicLine = 80u;
+
 constexpr uint32_t kRegReset = 0u;
 
 constexpr uint32_t kStateChunkWords = 1024u;
@@ -39,7 +49,7 @@ struct Span {
 
 constexpr Span kWritableSpans[] = {
     {0x00028u, 0x00028u}, {0x00030u, 0x00030u}, {0x00048u, 0x00048u},
-    {0x00050u, 0x00050u}, {0x00060u, 0x00060u}, {0x00068u, 0x00068u},
+    {0x00060u, 0x00060u}, {0x00068u, 0x00068u},
     {0x00070u, 0x00070u}, {0x00090u, 0x00090u}, {0x00094u, 0x00094u},
     {0x00098u, 0x00098u},
     {0x11004u, 0x11004u}, {0x21004u, 0x21004u}, {0x31004u, 0x31004u},
@@ -69,8 +79,10 @@ public:
 
     void OnReady() override {
         ResetState();
-        emu_.Get<GuestCpuReset>().RegisterResetListener(
-            [this](ResetLineKind) { ResetState(); });
+        emu_.Get<GuestCpuReset>().RegisterResetListener([this](ResetLineKind) {
+            ResetState();
+            PublishLine();
+        });
         emu_.Get<PeripheralDispatcher>().Register(this);
     }
 
@@ -82,7 +94,7 @@ public:
         if (off == kRegVersion) {
             return kVersionValue;
         }
-        if (off == kRegEbi2PortmapMode) {
+        if (off == kRegIntrStatus || off == kRegEbi2PortmapMode) {
             return Reg(off);
         }
         HaltUnsupportedAccess("ReadWord", addr, 0);
@@ -90,6 +102,19 @@ public:
 
     void WriteWord(uint32_t addr, uint32_t value) override {
         const uint32_t off = addr - MmioBase();
+        if (off == kRegIntrEnable) {
+            SetReg(kRegIntrEnable, value);
+            PublishLine();
+            return;
+        }
+        /* Linux arch/arm/mach-msm video-msm mdp4_util.c mdp4_isr writes the
+           status word it has just read to MDP_INTR_CLEAR, so a set bit clears
+           that source. */
+        if (off == kRegIntrClear) {
+            SetReg(kRegIntrStatus, Reg(kRegIntrStatus) & ~value);
+            PublishLine();
+            return;
+        }
         if (!IsWritable(off)) {
             HaltUnsupportedAccess("WriteWord", addr, value);
         }
@@ -116,9 +141,23 @@ public:
         }
     }
 
+    void PostRestore() override { PublishLine(); }
+
 private:
     uint32_t Reg(uint32_t off) const {
         return regs_[off / 4u].load(std::memory_order_acquire);
+    }
+
+    /* Linux arch/arm/mach-msm video-msm mdp4_util.c mdp4_isr takes the pending
+       set as MDP_INTR_STATUS masked by MDP_INTR_ENABLE, so the line follows
+       that product. */
+    void PublishLine() {
+        auto& vic = emu_.Get<IrqController>();
+        if ((Reg(kRegIntrStatus) & Reg(kRegIntrEnable)) != 0u) {
+            vic.AssertIrq(kVicLine);
+        } else {
+            vic.DeAssertIrq(kVicLine);
+        }
     }
 
     void SetReg(uint32_t off, uint32_t value) {
