@@ -2,10 +2,16 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
+#include "../../core/log.h"
+#include "../../cpu/emulated_memory.h"
+#include "../../lcd/display_size_latch.h"
+#include "../../socs/guest_cpu_reset.h"
 #include "../../state/state_stream.h"
 #include "../board_context.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <vector>
 
 namespace {
 
@@ -54,6 +60,13 @@ constexpr uint32_t kDcsReadId3             = 0xDCu;
 
 constexpr uint32_t kPixelFormat16Bpp = 0x05u;
 
+constexpr uint32_t kBytesPerPixel = 2u;
+constexpr uint32_t kStrideBytes   = kPanelWidth * kBytesPerPixel;
+constexpr uint32_t kSurfaceBytes  = kStrideBytes * kPanelHeight;
+
+constexpr uint16_t kVideoFormatRgb565 = 0x4565u;
+constexpr uint16_t kVideoAttributes   = 0x00C3u;
+
 constexpr uint32_t kId1Value = 0x0100FE21u;
 constexpr uint32_t kId3Value = 0x27009621u;
 
@@ -64,6 +77,11 @@ public:
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
         return bd && bd->GetBoard() == Board::NokiaLumia800;
+    }
+
+    void OnReady() override {
+        emu_.Get<GuestCpuReset>().RegisterResetListener(
+            [this](ResetLineKind) { PowerOnReset(); });
     }
 
     Msm8255MddiClientCapability Capability() const override {
@@ -102,7 +120,49 @@ public:
             value, address);
     }
 
+    void WriteVideoStream(const Msm8255MddiVideoStream& video,
+                          uint32_t data_pa, uint32_t data_bytes) override {
+        if (video.format_descriptor != kVideoFormatRgb565) {
+            emu_.Get<Fatal>().Die(
+                "nokia lumia 800 mddi panel: the display driver streamed "
+                "pixels in data format 0x%04X, and this panel accepts 0x%04X",
+                video.format_descriptor, kVideoFormatRgb565);
+        }
+        if (video.pixel_attributes != kVideoAttributes) {
+            emu_.Get<Fatal>().Die(
+                "nokia lumia 800 mddi panel: the display driver streamed "
+                "pixels with attributes 0x%04X, and this panel accepts 0x%04X",
+                video.pixel_attributes, kVideoAttributes);
+        }
+        RequireWindow(video);
+        RequireRun(video, data_bytes);
+
+        const uint32_t offset = static_cast<uint32_t>(video.y_start) *
+                                    kStrideBytes +
+                                static_cast<uint32_t>(video.x_start) *
+                                    kBytesPerPixel;
+        emu_.Get<EmulatedMemory>().CopyOut(data_pa, surface_.data() + offset,
+                                           data_bytes);
+
+        if (!streamed_) {
+            streamed_ = true;
+            LOG(Lcd, "NokiaLumia800MddiPanel: first streamed run, window "
+                     "%u,%u..%u,%u, %u pixels from %u,%u at PA 0x%08X\n",
+                video.x_left_edge, video.y_top_edge, video.x_right_edge,
+                video.y_bottom_edge, video.pixel_count, video.x_start,
+                video.y_start, data_pa);
+        }
+    }
+
+    Msm8255MddiSurface Surface() const override {
+        return {surface_.data(),          kStrideBytes,
+                kPanelWidth,              kPanelHeight,
+                PanelPixelFormat::kRgb565Le, display_on_ && !sleeping_};
+    }
+
     void SaveState(StateWriter& w) override {
+        w.WriteBytes(surface_.data(), surface_.size());
+        size_latch_.SaveState(w);
         w.Write<uint32_t>(packet_);
         w.Write<uint32_t>(payload_lo_);
         w.Write<uint32_t>(payload_hi_);
@@ -117,6 +177,8 @@ public:
         uint32_t armed = 0;
         uint32_t on    = 0;
         uint32_t sleep = 0;
+        r.ReadBytes(surface_.data(), surface_.size());
+        size_latch_.RestoreState(r);
         r.Read(packet_);
         r.Read(payload_lo_);
         r.Read(payload_hi_);
@@ -131,6 +193,56 @@ public:
     }
 
 private:
+    void PowerOnReset() {
+        packet_      = 0;
+        payload_lo_  = 0;
+        payload_hi_  = 0;
+        read_result_ = 0;
+        read_armed_  = false;
+        brightness_  = 0;
+        display_on_  = false;
+        sleeping_    = true;
+        streamed_    = false;
+        size_latch_  = DisplaySizeLatch{};
+        std::fill(surface_.begin(), surface_.end(), uint8_t{0});
+    }
+
+    void RequireWindow(const Msm8255MddiVideoStream& video) {
+        if (video.x_left_edge <= video.x_right_edge &&
+            video.y_top_edge <= video.y_bottom_edge &&
+            video.x_right_edge < kPanelWidth &&
+            video.y_bottom_edge < kPanelHeight) {
+            return;
+        }
+        emu_.Get<Fatal>().Die(
+            "nokia lumia 800 mddi panel: the display driver streamed pixels "
+            "into the window %u,%u..%u,%u, and this panel presents %ux%u "
+            "pixels", video.x_left_edge, video.y_top_edge, video.x_right_edge,
+            video.y_bottom_edge, kPanelWidth, kPanelHeight);
+    }
+
+    void RequireRun(const Msm8255MddiVideoStream& video, uint32_t data_bytes) {
+        const uint32_t pixels = video.pixel_count;
+        if (pixels * kBytesPerPixel != data_bytes) {
+            emu_.Get<Fatal>().Die(
+                "nokia lumia 800 mddi panel: the display driver streamed %u "
+                "pixels over %u bytes of data at %u bytes per pixel",
+                pixels, data_bytes, kBytesPerPixel);
+        }
+        const uint32_t x = video.x_start;
+        const uint32_t y = video.y_start;
+        if (x >= video.x_left_edge && y >= video.y_top_edge &&
+            y <= video.y_bottom_edge &&
+            x + pixels <= static_cast<uint32_t>(video.x_right_edge) + 1u) {
+            return;
+        }
+        emu_.Get<Fatal>().Die(
+            "nokia lumia 800 mddi panel: the display driver streamed %u pixels "
+            "from %u,%u, and its window is %u,%u..%u,%u", pixels, x, y,
+            video.x_left_edge, video.y_top_edge, video.x_right_edge,
+            video.y_bottom_edge);
+    }
+
     uint32_t PayloadByte(uint32_t index) const {
         const uint32_t word = index < 4u ? payload_lo_ : payload_hi_;
         return (word >> (8u * (index & 3u))) & kByteMask;
@@ -198,6 +310,7 @@ private:
             case kDcsSetDisplayOn:
                 RequireParameters(command, parameters, 0u);
                 display_on_ = true;
+                size_latch_.PublishOnce(emu_, display_on_ && !sleeping_);
                 return;
             case kDcsEnterPartialMode:
             case kDcsEnterNormalMode:
@@ -270,6 +383,10 @@ private:
     uint32_t brightness_ = 0;
     bool     display_on_ = false;
     bool     sleeping_   = true;
+
+    std::vector<uint8_t> surface_ = std::vector<uint8_t>(kSurfaceBytes, 0u);
+    DisplaySizeLatch     size_latch_;
+    bool                 streamed_ = false;
 };
 
 }
