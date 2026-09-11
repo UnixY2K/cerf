@@ -188,6 +188,9 @@ public:
         w.Write<uint32_t>(response_pending_.load(std::memory_order_acquire));
         w.Write<uint32_t>(response_address_.load(std::memory_order_acquire));
         w.Write<uint32_t>(response_value_.load(std::memory_order_acquire));
+        if (auto* client = emu_.TryGet<Msm8255MddiClient>()) {
+            client->SaveState(w);
+        }
     }
 
     void RestoreState(StateReader& r) override {
@@ -200,6 +203,9 @@ public:
         RestoreField(r, response_pending_);
         RestoreField(r, response_address_);
         RestoreField(r, response_value_);
+        if (auto* client = emu_.TryGet<Msm8255MddiClient>()) {
+            client->RestoreState(r);
+        }
     }
 
     void PostRestore() override { PublishLine(); }

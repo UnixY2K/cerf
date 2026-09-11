@@ -4,6 +4,9 @@
 
 #include <cstdint>
 
+class StateReader;
+class StateWriter;
+
 struct Msm8255MddiClientCapability {
     uint16_t bitmap_width;
     uint16_t bitmap_height;
@@ -21,4 +24,7 @@ public:
 
     virtual uint32_t ReadRegister(uint32_t address) = 0;
     virtual void     WriteRegister(uint32_t address, uint32_t value) = 0;
+
+    virtual void SaveState(StateWriter& w) = 0;
+    virtual void RestoreState(StateReader& r) = 0;
 };

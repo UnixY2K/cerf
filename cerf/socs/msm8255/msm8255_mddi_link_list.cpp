@@ -89,19 +89,19 @@ void Msm8255MddiLinkList::ExecuteItem(uint32_t item_pa,
             "controller flags 0x%04X", item_pa, flags);
     }
 
-    const uint32_t header_bytes = mem.ReadHalf(item_pa + kItemHeaderCountOff);
-    if (header_bytes != kRegisterAccessHeaderBytes) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 mddi link list: the item at 0x%08X sends a %u-byte packet "
-            "header", item_pa, header_bytes);
-    }
-
     const uint32_t packet_pa = item_pa + kItemPacketOff;
     const uint32_t type      = mem.ReadHalf(packet_pa + kPktTypeOff);
     if (type != kTypeRegisterAccess) {
         emu_.Get<Fatal>().Die(
             "msm8255 mddi link list: the item at 0x%08X sends packet type %u",
             item_pa, type);
+    }
+
+    const uint32_t header_bytes = mem.ReadHalf(item_pa + kItemHeaderCountOff);
+    if (header_bytes != kRegisterAccessHeaderBytes) {
+        emu_.Get<Fatal>().Die(
+            "msm8255 mddi link list: the item at 0x%08X sends a %u-byte packet "
+            "header", item_pa, header_bytes);
     }
 
     ExecuteRegisterAccess(item_pa, packet_pa, host);
