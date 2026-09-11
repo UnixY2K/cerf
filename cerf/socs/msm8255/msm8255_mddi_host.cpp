@@ -1,7 +1,11 @@
 #include "../../peripherals/peripheral_base.h"
 
+#include "msm8255_mddi_client.h"
+
 #include "../../boards/board_context.h"
 #include "../../core/cerf_emulator.h"
+#include "../../core/fatal.h"
+#include "../../cpu/emulated_memory.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 #include "../irq_controller.h"
@@ -32,8 +36,10 @@ constexpr uint32_t kRegRevPtr         = 0x20u;
 constexpr uint32_t kRegRevSize        = 0x24u;
 constexpr uint32_t kRegStat           = 0x28u;
 constexpr uint32_t kRegRevRateDiv     = 0x2Cu;
+constexpr uint32_t kRegRevCrcErr      = 0x30u;
 constexpr uint32_t kRegTa1Len         = 0x34u;
 constexpr uint32_t kRegTa2Len         = 0x38u;
+constexpr uint32_t kRegRevPktCnt      = 0x44u;
 constexpr uint32_t kRegDriveHi        = 0x48u;
 constexpr uint32_t kRegDriveLo        = 0x4Cu;
 constexpr uint32_t kRegDispWake       = 0x50u;
@@ -54,6 +60,7 @@ constexpr uint32_t kCmdHibernateAfterSf = 0x0301u;
 constexpr uint32_t kCmdReset            = 0x0400u;
 constexpr uint32_t kCmdDispListen       = 0x0500u;
 constexpr uint32_t kCmdDispIgnore       = 0x0501u;
+constexpr uint32_t kCmdGetClientCap     = 0x0601u;
 constexpr uint32_t kCmdSendRtd          = 0x0700u;
 constexpr uint32_t kCmdLinkActive       = 0x0900u;
 constexpr uint32_t kCmdPeriodicRevEncap = 0x0A00u;
@@ -67,6 +74,21 @@ constexpr uint32_t kIntInHibernation = 0x4000u;
    MDDI_STAT_IN_HIBERNATION. */
 constexpr uint32_t kStatLinkActive    = 0x0001u;
 constexpr uint32_t kStatInHibernation = 0x0010u;
+
+constexpr uint32_t kIntRevEncapDone = 0x00080000u;
+
+constexpr uint32_t kCapPacketType   = 66u;
+constexpr uint32_t kCapPacketBytes  = 76u;
+constexpr uint32_t kCapPacketLength = kCapPacketBytes - 2u;
+constexpr uint32_t kCapWords        = kCapPacketBytes / 4u;
+
+constexpr uint32_t kCapWordBitmap  = 4u;
+constexpr uint32_t kCapWordWindow  = 5u;
+constexpr uint32_t kCapWordMfr     = 15u;
+constexpr uint32_t kCapWordProduct = 16u;
+
+constexpr uint32_t kRevPacketOne = 1u;
+constexpr uint32_t kRevNoCrcErrors = 0u;
 
 constexpr uint32_t kCoreVersion = 0x28u;
 
@@ -96,7 +118,8 @@ public:
         const uint32_t off = addr - MmioBase();
         if (off == kRegCoreVer) return kCoreVersion;
         if (off == kRegPadCtl || off == kRegInten || off == kRegInt ||
-            off == kRegStat || off == kRegRtdVal) {
+            off == kRegStat || off == kRegRtdVal ||
+            off == kRegRevPktCnt || off == kRegRevCrcErr) {
             return Reg(off);
         }
         HaltUnsupportedAccess("ReadWord", addr, 0);
@@ -188,6 +211,50 @@ private:
         SetReg(kRegStat, kStatInHibernation);
     }
 
+    void DeliverClientCapability() {
+        auto* client = emu_.TryGet<Msm8255MddiClient>();
+        if (!client) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 mddi host: the guest asked the link for its client "
+                "capability and this board declares no mddi client");
+        }
+        const uint32_t rev_pa = Reg(kRegRevPtr);
+        if (rev_pa == 0u) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 mddi host: the guest asked the link for its client "
+                "capability before it programmed the reverse-packet pointer");
+        }
+
+        const uint32_t rev_bytes = Reg(kRegRevSize);
+        if (rev_bytes < kCapPacketBytes) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 mddi host: the guest declared a %u-byte reverse packet "
+                "buffer and the client capability packet is %u bytes",
+                rev_bytes, kCapPacketBytes);
+        }
+
+        const Msm8255MddiClientCapability cap = client->Capability();
+        uint32_t words[kCapWords] = {};
+        words[0] = kCapPacketLength | (kCapPacketType << 16);
+        words[kCapWordBitmap] =
+            cap.bitmap_width | (static_cast<uint32_t>(cap.bitmap_height) << 16);
+        words[kCapWordWindow] =
+            cap.display_window_width |
+            (static_cast<uint32_t>(cap.display_window_height) << 16);
+        words[kCapWordMfr]     = static_cast<uint32_t>(cap.mfr_name) << 16;
+        words[kCapWordProduct] = cap.product_code;
+
+        auto& mem = emu_.Get<EmulatedMemory>();
+        for (uint32_t i = 0; i < kCapWords; ++i) {
+            mem.WriteWord(rev_pa + 4u * i, words[i]);
+        }
+
+        SetReg(kRegRevCrcErr, kRevNoCrcErrors);
+        SetReg(kRegRevPktCnt, kRevPacketOne);
+        SetReg(kRegInt, Reg(kRegInt) | kIntRevEncapDone);
+        PublishLine();
+    }
+
     void WriteCommand(uint32_t addr, uint32_t value) {
         switch (value) {
             case kCmdLinkActive:
@@ -200,6 +267,10 @@ private:
             case kCmdReset:
                 SetReg(kRegCmd, value);
                 EnterHibernation();
+                return;
+            case kCmdGetClientCap:
+                SetReg(kRegCmd, value);
+                DeliverClientCapability();
                 return;
             case kCmdDispListen:
             case kCmdDispIgnore:
