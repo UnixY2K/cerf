@@ -19,6 +19,7 @@ constexpr uint32_t kClkCid  = 3u;
 constexpr uint32_t kProcClockEnable   = 5u;
 constexpr uint32_t kProcClockDisable  = 6u;
 constexpr uint32_t kProcConfigMdhClk  = 24u;
+constexpr uint32_t kProcGetClkFreqKhz = 28u;
 constexpr uint32_t kProcSelClkFreqHz  = 42u;
 
 constexpr uint32_t kClockPayloadBytes = kPacmarkBytes + kCallArgsOff + 4u;
@@ -34,6 +35,8 @@ constexpr uint32_t kThreeArgPayloadBytes =
 constexpr uint32_t kSelFreqClock        = 39u;
 constexpr uint32_t kSelFreqHz           = 24576000u;
 constexpr uint32_t kSelFreqMatchAtLeast = 0u;
+
+constexpr uint32_t kHzPerKhz = 1000u;
 
 constexpr uint32_t kResultWords = 1u;
 
@@ -76,7 +79,17 @@ private:
                              uint32_t max_khz);
     uint32_t GrantClockFreqHz(uint32_t clock, uint32_t freq_hz,
                               uint32_t match);
+    uint32_t ReportClockFreqKhz(uint32_t clock);
 };
+
+uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
+    if (clock == kSelFreqClock) {
+        return kSelFreqHz / kHzPerKhz;
+    }
+    emu_.Get<Fatal>().Die(
+        "msm8255 clkregim remote server: clock %u has no modeled rate to "
+        "report", clock);
+}
 
 uint32_t Msm8255ClkregimRemoteServer::GrantClockFreqHz(uint32_t clock,
                                                         uint32_t freq_hz,
@@ -122,6 +135,15 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
         return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
                                         peer_pid, peer_cid, call.xid, nullptr,
                                         kClockResultWords);
+    }
+
+    if (call.proc == kProcGetClkFreqKhz) {
+        codec.RequireCallBytes(*this, call.proc, size, kClockPayloadBytes);
+        const uint32_t results[kResultWords] = {
+            ReportClockFreqKhz(Be32(mem.ReadWord(call.body + kArg0Off)))};
+        return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
+                                        peer_pid, peer_cid, call.xid, results,
+                                        kResultWords);
     }
 
     if (call.proc != kProcConfigMdhClk && call.proc != kProcSelClkFreqHz) {
