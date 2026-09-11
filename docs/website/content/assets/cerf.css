@@ -335,8 +335,12 @@
    than columns stretches them instead of leaving gaps. */
 .cerf-wall {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--cerf-wall-min, 17rem), 1fr));
   gap: 1.2rem;
+}
+
+.cerf-wall--pair {
+  --cerf-wall-min: 12rem;
 }
 
 /* Material styles every figure as width: fit-content, which shrinks the tile to
