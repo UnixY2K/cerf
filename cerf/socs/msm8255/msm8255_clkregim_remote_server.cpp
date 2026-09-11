@@ -16,7 +16,12 @@ constexpr uint32_t kClkProg = 0x3000000Fu;
 constexpr uint32_t kClkVers = 0x00030001u;
 constexpr uint32_t kClkCid  = 3u;
 
-constexpr uint32_t kProcConfigMdhClk = 24u;
+constexpr uint32_t kProcClockEnable   = 5u;
+constexpr uint32_t kProcClockDisable  = 6u;
+constexpr uint32_t kProcConfigMdhClk  = 24u;
+
+constexpr uint32_t kClockPayloadBytes = kPacmarkBytes + kCallArgsOff + 4u;
+constexpr uint32_t kClockResultWords  = 0u;
 
 constexpr uint32_t kArgIndexOff = kCallArgsOff + 0u;
 constexpr uint32_t kArgMinOff   = kCallArgsOff + 4u;
@@ -92,6 +97,13 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
     auto& codec = emu_.Get<Msm8255OncrpcCodec>();
 
     const Msm8255OncrpcCall call = codec.ParseCall(*this, in_pa, size);
+
+    if (call.proc == kProcClockEnable || call.proc == kProcClockDisable) {
+        codec.RequireCallBytes(*this, call.proc, size, kClockPayloadBytes);
+        return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
+                                        peer_pid, peer_cid, call.xid, nullptr,
+                                        kClockResultWords);
+    }
 
     if (call.proc != kProcConfigMdhClk) {
         emu_.Get<Fatal>().Die(
