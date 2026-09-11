@@ -36,6 +36,16 @@ constexpr uint32_t kRegIntrClear  = 0x00058u;
 /* Linux arch/arm/mach-msm irqs-7x30.h: INT_MDP. */
 constexpr uint32_t kVicLine = 80u;
 
+/* Linux arch/arm/mach-msm video-msm mdp4.h: MDP4_OVERLAYPROC0_BASE and
+   MDP4_OVERLAYPROC1_BASE. */
+constexpr uint32_t kOverlayProc0 = 0x10000u;
+constexpr uint32_t kOverlayProc1 = 0x18000u;
+
+/* Linux arch/arm/mach-msm video-msm mdp4_overlay.c reads the overlay
+   processor's word at +0x14 and writes it back with GC_LUT_EN set. */
+constexpr uint32_t kRegOverlayOp0 = kOverlayProc0 + 0x14u;
+constexpr uint32_t kRegOverlayOp1 = kOverlayProc1 + 0x14u;
+
 constexpr uint32_t kRegReset = 0u;
 
 constexpr uint32_t kStateChunkWords = 1024u;
@@ -52,6 +62,7 @@ constexpr Span kWritableSpans[] = {
     {0x00060u, 0x00060u}, {0x00068u, 0x00068u},
     {0x00070u, 0x00070u}, {0x00090u, 0x00090u}, {0x00094u, 0x00094u},
     {0x00098u, 0x00098u},
+    {kRegOverlayOp0, kRegOverlayOp0}, {kRegOverlayOp1, kRegOverlayOp1},
     {0x11004u, 0x11004u}, {0x21004u, 0x21004u}, {0x31004u, 0x31004u},
     {0x41004u, 0x41004u}, {0x51004u, 0x51004u}, {0x91004u, 0x91004u},
     {0x24400u, 0x24420u}, {0x24500u, 0x24508u}, {0x24580u, 0x24588u},
@@ -94,7 +105,8 @@ public:
         if (off == kRegVersion) {
             return kVersionValue;
         }
-        if (off == kRegIntrStatus || off == kRegEbi2PortmapMode) {
+        if (off == kRegIntrStatus || off == kRegEbi2PortmapMode ||
+            off == kRegOverlayOp0 || off == kRegOverlayOp1) {
             return Reg(off);
         }
         HaltUnsupportedAccess("ReadWord", addr, 0);
