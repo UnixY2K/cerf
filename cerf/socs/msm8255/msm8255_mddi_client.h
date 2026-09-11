@@ -18,4 +18,7 @@ public:
     using Service::Service;
 
     virtual Msm8255MddiClientCapability Capability() const = 0;
+
+    virtual uint32_t ReadRegister(uint32_t address) = 0;
+    virtual void     WriteRegister(uint32_t address, uint32_t value) = 0;
 };

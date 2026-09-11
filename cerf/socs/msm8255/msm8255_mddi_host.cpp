@@ -1,6 +1,7 @@
 #include "../../peripherals/peripheral_base.h"
 
 #include "msm8255_mddi_client.h"
+#include "msm8255_mddi_link_list.h"
 
 #include "../../boards/board_context.h"
 #include "../../core/cerf_emulator.h"
@@ -28,6 +29,7 @@ constexpr uint32_t kVicLine = 44u;
    offsets, MDDI_CMD through MDDI_PAD_CAL. */
 constexpr uint32_t kRegCmd            = 0x00u;
 constexpr uint32_t kRegVersion        = 0x04u;
+constexpr uint32_t kRegPriPtr         = 0x08u;
 constexpr uint32_t kRegBps            = 0x10u;
 constexpr uint32_t kRegSpm            = 0x14u;
 constexpr uint32_t kRegInt            = 0x18u;
@@ -60,6 +62,7 @@ constexpr uint32_t kCmdHibernateAfterSf = 0x0301u;
 constexpr uint32_t kCmdReset            = 0x0400u;
 constexpr uint32_t kCmdDispListen       = 0x0500u;
 constexpr uint32_t kCmdDispIgnore       = 0x0501u;
+constexpr uint32_t kCmdSendRevEncap     = 0x0600u;
 constexpr uint32_t kCmdGetClientCap     = 0x0601u;
 constexpr uint32_t kCmdSendRtd          = 0x0700u;
 constexpr uint32_t kCmdLinkActive       = 0x0900u;
@@ -77,24 +80,46 @@ constexpr uint32_t kStatInHibernation = 0x0010u;
 
 constexpr uint32_t kIntRevEncapDone = 0x00080000u;
 
+/* Linux arch/arm/mach-msm video-msm mddihosti.h:
+   MDDI_INT_PRI_LINK_LIST_DONE. */
+constexpr uint32_t kIntPriLinkListDone = 0x8000u;
+
 constexpr uint32_t kCapPacketType   = 66u;
 constexpr uint32_t kCapPacketBytes  = 76u;
 constexpr uint32_t kCapPacketLength = kCapPacketBytes - 2u;
-constexpr uint32_t kCapWords        = kCapPacketBytes / 4u;
 
-constexpr uint32_t kCapWordBitmap  = 4u;
-constexpr uint32_t kCapWordWindow  = 5u;
-constexpr uint32_t kCapWordMfr     = 15u;
-constexpr uint32_t kCapWordProduct = 16u;
+constexpr uint32_t kCapOffBitmapWidth  = 16u;
+constexpr uint32_t kCapOffBitmapHeight = 18u;
+constexpr uint32_t kCapOffWindowWidth  = 20u;
+constexpr uint32_t kCapOffWindowHeight = 22u;
+constexpr uint32_t kCapOffMfrName      = 62u;
+constexpr uint32_t kCapOffProductCode  = 64u;
 
-constexpr uint32_t kRevPacketOne = 1u;
+/* Linux arch/arm/mach-msm video-msm mddihosti.h:
+   mddi_register_access_packet_type. */
+constexpr uint32_t kRegAccPacketType  = 146u;
+constexpr uint32_t kRegAccPacketBytes = 18u;
+constexpr uint32_t kRegAccPacketLength = kRegAccPacketBytes - 2u;
+
+constexpr uint32_t kPktOffLength   =  0u;
+constexpr uint32_t kPktOffType     =  2u;
+constexpr uint32_t kPktOffRwInfo   =  6u;
+constexpr uint32_t kPktOffAddress  =  8u;
+constexpr uint32_t kPktOffDataList = 14u;
+
+/* Linux arch/arm/mach-msm video-msm mddihosti.h: read_write_info bits 15:14
+   carry 11 for a response to a read, over the data item count in bits 13:0. */
+constexpr uint32_t kRwInfoReadResponse = 0xC001u;
+
+constexpr uint32_t kRevPacketOne   = 1u;
+constexpr uint32_t kRevPacketNone  = 0u;
 constexpr uint32_t kRevNoCrcErrors = 0u;
 
 constexpr uint32_t kCoreVersion = 0x28u;
 
 constexpr uint32_t kRegReset = 0u;
 
-class Msm8255MddiHost : public Peripheral {
+class Msm8255MddiHost : public Peripheral, public Msm8255MddiLinkListHost {
 public:
     using Peripheral::Peripheral;
 
@@ -144,6 +169,11 @@ public:
             PublishLine();
             return;
         }
+        if (off == kRegPriPtr) {
+            SetReg(kRegPriPtr, value);
+            ExecuteLinkList(value);
+            return;
+        }
         if (!IsConfigReg(off)) {
             HaltUnsupportedAccess("WriteWord", addr, value);
         }
@@ -154,6 +184,10 @@ public:
         for (uint32_t i = 0; i < kWordCount; ++i) {
             w.Write<uint32_t>(regs_[i].load(std::memory_order_acquire));
         }
+        w.Write<uint32_t>(rev_cursor_.load(std::memory_order_acquire));
+        w.Write<uint32_t>(response_pending_.load(std::memory_order_acquire));
+        w.Write<uint32_t>(response_address_.load(std::memory_order_acquire));
+        w.Write<uint32_t>(response_value_.load(std::memory_order_acquire));
     }
 
     void RestoreState(StateReader& r) override {
@@ -162,6 +196,10 @@ public:
             r.Read(v);
             regs_[i].store(v, std::memory_order_release);
         }
+        RestoreField(r, rev_cursor_);
+        RestoreField(r, response_pending_);
+        RestoreField(r, response_address_);
+        RestoreField(r, response_value_);
     }
 
     void PostRestore() override { PublishLine(); }
@@ -209,50 +247,106 @@ private:
             regs_[i].store(kRegReset, std::memory_order_release);
         }
         SetReg(kRegStat, kStatInHibernation);
+        rev_cursor_.store(0u, std::memory_order_release);
+        response_pending_.store(0u, std::memory_order_release);
+        response_address_.store(0u, std::memory_order_release);
+        response_value_.store(0u, std::memory_order_release);
+    }
+
+    static void RestoreField(StateReader& r, std::atomic<uint32_t>& field) {
+        uint32_t v = kRegReset;
+        r.Read(v);
+        field.store(v, std::memory_order_release);
+    }
+
+    static void StoreHalf(uint8_t* packet, uint32_t off, uint32_t value) {
+        packet[off]      = static_cast<uint8_t>(value);
+        packet[off + 1u] = static_cast<uint8_t>(value >> 8);
+    }
+
+    static void StoreWord(uint8_t* packet, uint32_t off, uint32_t value) {
+        StoreHalf(packet, off,      value & 0xFFFFu);
+        StoreHalf(packet, off + 2u, value >> 16);
+    }
+
+    void ExecuteLinkList(uint32_t head_pa) {
+        emu_.Get<Msm8255MddiLinkList>().Execute(head_pa, *this);
+        SetReg(kRegInt, Reg(kRegInt) | kIntPriLinkListDone);
+        PublishLine();
+    }
+
+    void QueueRegisterReadResponse(uint32_t address, uint32_t value) override {
+        response_address_.store(address, std::memory_order_release);
+        response_value_.store(value, std::memory_order_release);
+        response_pending_.store(1u, std::memory_order_release);
+    }
+
+    void DeliverReversePacket(const uint8_t* packet, uint32_t bytes) {
+        const uint32_t base = Reg(kRegRevPtr);
+        if (base == 0u) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 mddi host: the guest asked the link for reverse data "
+                "before it programmed the reverse-packet pointer");
+        }
+        const uint32_t window = Reg(kRegRevSize);
+        if (window < bytes) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 mddi host: the guest declared a %u-byte reverse packet "
+                "buffer and the client answers with %u bytes", window, bytes);
+        }
+
+        auto&    mem    = emu_.Get<EmulatedMemory>();
+        uint32_t cursor = rev_cursor_.load(std::memory_order_acquire);
+        for (uint32_t i = 0; i < bytes; ++i) {
+            mem.WriteByte(base + cursor, packet[i]);
+            cursor = (cursor + 1u) % window;
+        }
+        rev_cursor_.store(cursor, std::memory_order_release);
+    }
+
+    void CompleteReverseEncap(uint32_t packets) {
+        SetReg(kRegRevCrcErr, kRevNoCrcErrors);
+        SetReg(kRegRevPktCnt, packets);
+        SetReg(kRegInt, Reg(kRegInt) | kIntRevEncapDone);
+        PublishLine();
     }
 
     void DeliverClientCapability() {
-        auto* client = emu_.TryGet<Msm8255MddiClient>();
-        if (!client) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 mddi host: the guest asked the link for its client "
-                "capability and this board declares no mddi client");
-        }
-        const uint32_t rev_pa = Reg(kRegRevPtr);
-        if (rev_pa == 0u) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 mddi host: the guest asked the link for its client "
-                "capability before it programmed the reverse-packet pointer");
-        }
+        const Msm8255MddiClientCapability cap =
+            emu_.Get<Msm8255MddiClient>().Capability();
 
-        const uint32_t rev_bytes = Reg(kRegRevSize);
-        if (rev_bytes < kCapPacketBytes) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 mddi host: the guest declared a %u-byte reverse packet "
-                "buffer and the client capability packet is %u bytes",
-                rev_bytes, kCapPacketBytes);
-        }
+        uint8_t packet[kCapPacketBytes] = {};
+        StoreHalf(packet, kPktOffLength,        kCapPacketLength);
+        StoreHalf(packet, kPktOffType,          kCapPacketType);
+        StoreHalf(packet, kCapOffBitmapWidth,   cap.bitmap_width);
+        StoreHalf(packet, kCapOffBitmapHeight,  cap.bitmap_height);
+        StoreHalf(packet, kCapOffWindowWidth,   cap.display_window_width);
+        StoreHalf(packet, kCapOffWindowHeight,  cap.display_window_height);
+        StoreHalf(packet, kCapOffMfrName,       cap.mfr_name);
+        StoreHalf(packet, kCapOffProductCode,   cap.product_code);
 
-        const Msm8255MddiClientCapability cap = client->Capability();
-        uint32_t words[kCapWords] = {};
-        words[0] = kCapPacketLength | (kCapPacketType << 16);
-        words[kCapWordBitmap] =
-            cap.bitmap_width | (static_cast<uint32_t>(cap.bitmap_height) << 16);
-        words[kCapWordWindow] =
-            cap.display_window_width |
-            (static_cast<uint32_t>(cap.display_window_height) << 16);
-        words[kCapWordMfr]     = static_cast<uint32_t>(cap.mfr_name) << 16;
-        words[kCapWordProduct] = cap.product_code;
+        DeliverReversePacket(packet, kCapPacketBytes);
+        CompleteReverseEncap(kRevPacketOne);
+    }
 
-        auto& mem = emu_.Get<EmulatedMemory>();
-        for (uint32_t i = 0; i < kCapWords; ++i) {
-            mem.WriteWord(rev_pa + 4u * i, words[i]);
+    void DeliverReverseEncapsulation() {
+        if (response_pending_.load(std::memory_order_acquire) == 0u) {
+            CompleteReverseEncap(kRevPacketNone);
+            return;
         }
 
-        SetReg(kRegRevCrcErr, kRevNoCrcErrors);
-        SetReg(kRegRevPktCnt, kRevPacketOne);
-        SetReg(kRegInt, Reg(kRegInt) | kIntRevEncapDone);
-        PublishLine();
+        uint8_t packet[kRegAccPacketBytes] = {};
+        StoreHalf(packet, kPktOffLength, kRegAccPacketLength);
+        StoreHalf(packet, kPktOffType,   kRegAccPacketType);
+        StoreHalf(packet, kPktOffRwInfo, kRwInfoReadResponse);
+        StoreWord(packet, kPktOffAddress,
+                  response_address_.load(std::memory_order_acquire));
+        StoreWord(packet, kPktOffDataList,
+                  response_value_.load(std::memory_order_acquire));
+
+        response_pending_.store(0u, std::memory_order_release);
+        DeliverReversePacket(packet, kRegAccPacketBytes);
+        CompleteReverseEncap(kRevPacketOne);
     }
 
     void WriteCommand(uint32_t addr, uint32_t value) {
@@ -271,6 +365,10 @@ private:
             case kCmdGetClientCap:
                 SetReg(kRegCmd, value);
                 DeliverClientCapability();
+                return;
+            case kCmdSendRevEncap:
+                SetReg(kRegCmd, value);
+                DeliverReverseEncapsulation();
                 return;
             case kCmdDispListen:
             case kCmdDispIgnore:
@@ -308,6 +406,11 @@ private:
     }
 
     std::atomic<uint32_t> regs_[kWordCount] = {};
+
+    std::atomic<uint32_t> rev_cursor_{0};
+    std::atomic<uint32_t> response_pending_{0};
+    std::atomic<uint32_t> response_address_{0};
+    std::atomic<uint32_t> response_value_{0};
 };
 
 }
