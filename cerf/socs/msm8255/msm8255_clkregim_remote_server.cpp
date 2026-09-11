@@ -19,16 +19,21 @@ constexpr uint32_t kClkCid  = 3u;
 constexpr uint32_t kProcClockEnable   = 5u;
 constexpr uint32_t kProcClockDisable  = 6u;
 constexpr uint32_t kProcConfigMdhClk  = 24u;
+constexpr uint32_t kProcSelClkFreqHz  = 42u;
 
 constexpr uint32_t kClockPayloadBytes = kPacmarkBytes + kCallArgsOff + 4u;
 constexpr uint32_t kClockResultWords  = 0u;
 
-constexpr uint32_t kArgIndexOff = kCallArgsOff + 0u;
-constexpr uint32_t kArgMinOff   = kCallArgsOff + 4u;
-constexpr uint32_t kArgMaxOff   = kCallArgsOff + 8u;
+constexpr uint32_t kArg0Off = kCallArgsOff + 0u;
+constexpr uint32_t kArg1Off = kCallArgsOff + 4u;
+constexpr uint32_t kArg2Off = kCallArgsOff + 8u;
 
-constexpr uint32_t kConfigMdhPayloadBytes =
+constexpr uint32_t kThreeArgPayloadBytes =
     kPacmarkBytes + kCallArgsOff + 12u;
+
+constexpr uint32_t kSelFreqClock        = 39u;
+constexpr uint32_t kSelFreqHz           = 24576000u;
+constexpr uint32_t kSelFreqMatchAtLeast = 0u;
 
 constexpr uint32_t kResultWords = 1u;
 
@@ -69,7 +74,21 @@ public:
 private:
     uint32_t GrantMdhRateKhz(uint32_t index, uint32_t min_khz,
                              uint32_t max_khz);
+    uint32_t GrantClockFreqHz(uint32_t clock, uint32_t freq_hz,
+                              uint32_t match);
 };
+
+uint32_t Msm8255ClkregimRemoteServer::GrantClockFreqHz(uint32_t clock,
+                                                        uint32_t freq_hz,
+                                                        uint32_t match) {
+    if (clock != kSelFreqClock || freq_hz != kSelFreqHz ||
+        match != kSelFreqMatchAtLeast) {
+        emu_.Get<Fatal>().Die(
+            "msm8255 clkregim remote server: clock %u has no modeled rate for "
+            "a %u Hz request under match mode %u", clock, freq_hz, match);
+    }
+    return freq_hz;
+}
 
 uint32_t Msm8255ClkregimRemoteServer::GrantMdhRateKhz(uint32_t index,
                                                        uint32_t min_khz,
@@ -105,19 +124,20 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
                                         kClockResultWords);
     }
 
-    if (call.proc != kProcConfigMdhClk) {
+    if (call.proc != kProcConfigMdhClk && call.proc != kProcSelClkFreqHz) {
         emu_.Get<Fatal>().Die(
             "msm8255 clkregim remote server: rpc procedure %u with a %u-byte "
             "payload is not modeled", call.proc, size);
     }
-    codec.RequireCallBytes(*this, call.proc, size, kConfigMdhPayloadBytes);
+    codec.RequireCallBytes(*this, call.proc, size, kThreeArgPayloadBytes);
 
-    const uint32_t index   = Be32(mem.ReadWord(call.body + kArgIndexOff));
-    const uint32_t min_khz = Be32(mem.ReadWord(call.body + kArgMinOff));
-    const uint32_t max_khz = Be32(mem.ReadWord(call.body + kArgMaxOff));
+    const uint32_t arg0 = Be32(mem.ReadWord(call.body + kArg0Off));
+    const uint32_t arg1 = Be32(mem.ReadWord(call.body + kArg1Off));
+    const uint32_t arg2 = Be32(mem.ReadWord(call.body + kArg2Off));
 
     const uint32_t results[kResultWords] = {
-        GrantMdhRateKhz(index, min_khz, max_khz)};
+        call.proc == kProcConfigMdhClk ? GrantMdhRateKhz(arg0, arg1, arg2)
+                                       : GrantClockFreqHz(arg0, arg1, arg2)};
     return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
                                     peer_pid, peer_cid, call.xid, results,
                                     kResultWords);
