@@ -75,6 +75,15 @@ constexpr uint32_t kPartCategoryOff = 28u;
 constexpr uint32_t kPartDomainOff   = 32u;
 constexpr uint32_t kPartTypeOff     = 36u;
 
+/* Little Kernel platform/msm_shared/smem.h: SMEM_BOOT_INFO_FOR_APPS, and the
+   PLATFORM_MSM7X30 boot_info_for_apps whose boot_flags follows a 72-byte
+   boot_symmetric_key_info. */
+constexpr uint32_t kIdBootInfo    = 418u;
+constexpr uint32_t kBootInfoBytes = 100u;
+constexpr uint32_t kBootFlagsOff  = 72u;
+
+constexpr uint32_t kBootFlags = 1u;
+
 constexpr uint32_t kBspBytes  = 20456u;
 constexpr uint32_t kSrcBytes  = 208u;
 constexpr uint32_t kBspMagic  = 0xCCEE0003u;
@@ -116,7 +125,8 @@ constexpr uint32_t Align8(uint32_t v) { return (v + 7u) & ~7u; }
 constexpr uint32_t kBspOff = Align8(kFixedAreaEnd);
 constexpr uint32_t kSrcOff = Align8(kBspOff + kBspBytes);
 constexpr uint32_t kPtableOff = Align8(kSrcOff + kSrcBytes);
-constexpr uint32_t kHeapUsedEnd = Align8(kPtableOff + kPtableBytes);
+constexpr uint32_t kBootInfoOff = Align8(kPtableOff + kPtableBytes);
+constexpr uint32_t kHeapUsedEnd = Align8(kBootInfoOff + kBootInfoBytes);
 
 }
 
@@ -197,6 +207,9 @@ void Msm8255Smem::Seed() {
     PublishItem(kIdClkregimBsp,     kBspOff, kBspBytes, kBspMagic);
     PublishItem(kIdClkregimSources, kSrcOff, kSrcBytes, kSrcMagic);
     PublishRamPartitions();
+
+    PublishItem(kIdBootInfo, kBootInfoOff, kBootInfoBytes, 0u);
+    mem.WriteWord(kSmemPa + kBootInfoOff + kBootFlagsOff, kBootFlags);
 
     SeedSpeedRecord();
     SeedPerfLevels();
