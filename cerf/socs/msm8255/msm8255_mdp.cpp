@@ -45,6 +45,13 @@ constexpr uint32_t kRegDispIntfSel = 0x00038u;
    register, bit 24 of which it names DITHER_EN on DMA_P. */
 constexpr uint32_t kRegDmaPConfig = 0x90000u;
 
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: the DMA array's second
+   element, which its mdp4_dma index names DMA_S. */
+constexpr uint32_t kDmaSBase = 0xA0000u;
+
+/* Linux arch/arm/mach-msm video-msm mdp_vsync.c: MDP_VSYNC_SEL. */
+constexpr uint32_t kRegVsyncSel = 0x00124u;
+
 /* Linux drivers/gpu/drm/msm registers display mdp4.xml: the LCDC array's
    ENABLE register, whose bit 0 mdp4_util.c tests before clearing the block. */
 constexpr uint32_t kRegLcdcEnable = 0xC0000u;
@@ -92,6 +99,23 @@ constexpr uint32_t kRegOvlp0Kick = 0x00004u;
    mdp4_util.c mdp4_isr dispatches through its MDDI arm. */
 constexpr uint32_t kIntrOverlay0Done = 0x00000001u;
 
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: DMA_S_KICK. */
+constexpr uint32_t kRegDmaSKick = 0x00010u;
+
+/* Linux arch/arm/mach-msm video-msm mdp4.h: INTR_DMA_S_DONE, the bit
+   mdp4_util.c mdp4_isr completes the DMA_S block on. */
+constexpr uint32_t kIntrDmaSDone = 0x00000004u;
+
+struct KickDone {
+    uint32_t kick;
+    uint32_t done;
+};
+
+constexpr KickDone kKickDone[] = {
+    {kRegOvlp0Kick, kIntrOverlay0Done},
+    {kRegDmaSKick, kIntrDmaSDone},
+};
+
 /* Linux arch/arm/mach-msm video-msm mdp4.h: MDP4_RGB_BASE and MDP4_RGB_OFF. */
 constexpr uint32_t kRgbBase = 0x40000u;
 constexpr uint32_t kRgbOff  = 0x10000u;
@@ -120,10 +144,10 @@ constexpr Span kWritableSpans[] = {
     {0x00070u, 0x00070u}, {0x00090u, 0x00090u}, {0x00094u, 0x00094u},
     {0x00098u, 0x00098u},
     {kRegSyncCfg0, kRegSyncCfg0}, {kRegSyncCfg1, kRegSyncCfg1},
-    {0x00118u, 0x00118u}, {0x0011Cu, 0x0011Cu},
+    {0x00118u, 0x00118u}, {0x0011Cu, 0x0011Cu}, {kRegVsyncSel, kRegVsyncSel},
     {0x00200u, 0x00200u}, {0x00204u, 0x00204u},
     {kReg020C, kReg020C}, {0x00210u, 0x00210u}, {0x00214u, 0x00214u},
-    {0x0021Cu, 0x0021Cu},
+    {0x0021Cu, 0x0021Cu}, {0x00220u, 0x00220u},
     {kRegOverlayCfg0, kRegOverlayCfg0},
     {kOverlayProc0 + 0x08u, kOverlayProc0 + 0x10u},
     {kRegOverlayOp0, kRegOverlayOp0}, {kRegOverlayOp1, kRegOverlayOp1},
@@ -143,6 +167,8 @@ constexpr Span kWritableSpans[] = {
     {0x38100u, 0x3810Cu}, {0x38200u, 0x38204u}, {0x39000u, 0x3AFFCu},
     {0x90000u, 0x90010u}, {0x90018u, 0x90020u}, {0x90040u, 0x9004Cu},
     {0x90060u, 0x90070u},
+    {kDmaSBase, kDmaSBase + 0x10u},
+    {kDmaSBase + 0x18u, kDmaSBase + 0x18u},
     {0x93400u, 0x93420u}, {0x93500u, 0x93508u}, {0x93580u, 0x93588u},
     {0x93600u, 0x93614u}, {0x93680u, 0x93694u},
     {0x94800u, 0x94FFCu},
@@ -177,7 +203,8 @@ public:
         }
         if (off == kRegIntrEnable || off == kRegIntrStatus ||
             off == kRegDispStatus || off == kRegDispIntfSel ||
-            off == kRegDmaPConfig || off == kRegLcdcEnable ||
+            off == kRegDmaPConfig || off == kDmaSBase ||
+            off == kRegVsyncSel || off == kRegLcdcEnable ||
             off == kRegEbi2PortmapMode ||
             off == kRegSyncCfg0 || off == kRegSyncCfg1 || off == kReg020C ||
             off == kRegOverlayOp0 || off == kRegOverlayOp1 ||
@@ -202,8 +229,9 @@ public:
             PublishLine();
             return;
         }
-        if (off == kRegOvlp0Kick) {
-            SetReg(kRegIntrStatus, Reg(kRegIntrStatus) | kIntrOverlay0Done);
+        for (const KickDone& k : kKickDone) {
+            if (off != k.kick) continue;
+            SetReg(kRegIntrStatus, Reg(kRegIntrStatus) | k.done);
             PublishLine();
             return;
         }
