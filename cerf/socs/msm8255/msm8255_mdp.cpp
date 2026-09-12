@@ -33,6 +33,10 @@ constexpr uint32_t kRegIntrEnable = 0x00050u;
 constexpr uint32_t kRegIntrStatus = 0x00054u;
 constexpr uint32_t kRegIntrClear  = 0x00058u;
 
+/* Linux arch/arm/mach-msm video-msm mdp4_util.c mdp4_display_status reads
+   MDP_DISPLAY_STATUS and keeps its low ten bits. */
+constexpr uint32_t kRegDispStatus = 0x00018u;
+
 /* Linux arch/arm/mach-msm video-msm mdp_vsync.c, its CONFIG_FB_MSM_MDP40 arm:
    MDP_SYNC_CFG_0 and MDP_SYNC_CFG_1, which mdp_set_sync_cfg_0 and _1 build from
    the line count, the external-vsync enable and the vsync counter. */
@@ -118,8 +122,8 @@ public:
             return kVersionValue;
         }
         if (off == kRegIntrEnable || off == kRegIntrStatus ||
-            off == kRegEbi2PortmapMode || off == kRegSyncCfg0 ||
-            off == kRegSyncCfg1 || off == kReg020C ||
+            off == kRegDispStatus || off == kRegEbi2PortmapMode ||
+            off == kRegSyncCfg0 || off == kRegSyncCfg1 || off == kReg020C ||
             off == kRegOverlayOp0 || off == kRegOverlayOp1) {
             return Reg(off);
         }
