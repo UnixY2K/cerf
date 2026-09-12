@@ -37,6 +37,18 @@ constexpr uint32_t kRegIntrClear  = 0x00058u;
    MDP_DISPLAY_STATUS and keeps its low ten bits. */
 constexpr uint32_t kRegDispStatus = 0x00018u;
 
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: DISP_INTF_SEL, whose
+   PRIM and EXT fields mdp4_overlay.c reads back per mixer. */
+constexpr uint32_t kRegDispIntfSel = 0x00038u;
+
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: the DMA array's CONFIG
+   register, bit 24 of which it names DITHER_EN on DMA_P. */
+constexpr uint32_t kRegDmaPConfig = 0x90000u;
+
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: the LCDC array's
+   ENABLE register, whose bit 0 mdp4_util.c tests before clearing the block. */
+constexpr uint32_t kRegLcdcEnable = 0xC0000u;
+
 /* Linux arch/arm/mach-msm video-msm mdp_vsync.c, its CONFIG_FB_MSM_MDP40 arm:
    MDP_SYNC_CFG_0 and MDP_SYNC_CFG_1, which mdp_set_sync_cfg_0 and _1 build from
    the line count, the external-vsync enable and the vsync counter. */
@@ -85,7 +97,8 @@ struct Span {
 };
 
 constexpr Span kWritableSpans[] = {
-    {0x00028u, 0x00028u}, {0x00030u, 0x00030u}, {0x00048u, 0x00048u},
+    {0x00028u, 0x00028u}, {0x00030u, 0x00030u},
+    {kRegDispIntfSel, kRegDispIntfSel}, {0x00048u, 0x00048u},
     {0x00060u, 0x00060u}, {0x00068u, 0x00068u},
     {0x00070u, 0x00070u}, {0x00090u, 0x00090u}, {0x00094u, 0x00094u},
     {0x00098u, 0x00098u},
@@ -93,6 +106,7 @@ constexpr Span kWritableSpans[] = {
     {0x00118u, 0x00118u}, {0x0011Cu, 0x0011Cu},
     {0x00200u, 0x00200u}, {0x00204u, 0x00204u},
     {kReg020C, kReg020C}, {0x00210u, 0x00210u}, {0x00214u, 0x00214u},
+    {0x0021Cu, 0x0021Cu},
     {kRegOverlayCfg0, kRegOverlayCfg0},
     {kOverlayProc0 + 0x08u, kOverlayProc0 + 0x10u},
     {kRegOverlayOp0, kRegOverlayOp0}, {kRegOverlayOp1, kRegOverlayOp1},
@@ -143,7 +157,9 @@ public:
             return kVersionValue;
         }
         if (off == kRegIntrEnable || off == kRegIntrStatus ||
-            off == kRegDispStatus || off == kRegEbi2PortmapMode ||
+            off == kRegDispStatus || off == kRegDispIntfSel ||
+            off == kRegDmaPConfig || off == kRegLcdcEnable ||
+            off == kRegEbi2PortmapMode ||
             off == kRegSyncCfg0 || off == kRegSyncCfg1 || off == kReg020C ||
             off == kRegOverlayOp0 || off == kRegOverlayOp1 ||
             off == kRegRgbOpMode) {
