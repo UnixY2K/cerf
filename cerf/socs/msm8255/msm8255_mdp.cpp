@@ -33,6 +33,14 @@ constexpr uint32_t kRegIntrEnable = 0x00050u;
 constexpr uint32_t kRegIntrStatus = 0x00054u;
 constexpr uint32_t kRegIntrClear  = 0x00058u;
 
+/* Linux arch/arm/mach-msm video-msm mdp_vsync.c, its CONFIG_FB_MSM_MDP40 arm:
+   MDP_SYNC_CFG_0 and MDP_SYNC_CFG_1, which mdp_set_sync_cfg_0 and _1 build from
+   the line count, the external-vsync enable and the vsync counter. */
+constexpr uint32_t kRegSyncCfg0 = 0x00100u;
+constexpr uint32_t kRegSyncCfg1 = 0x00104u;
+
+constexpr uint32_t kReg020C = 0x0020Cu;
+
 /* Linux arch/arm/mach-msm irqs-7x30.h: INT_MDP. */
 constexpr uint32_t kVicLine = 80u;
 
@@ -62,6 +70,10 @@ constexpr Span kWritableSpans[] = {
     {0x00060u, 0x00060u}, {0x00068u, 0x00068u},
     {0x00070u, 0x00070u}, {0x00090u, 0x00090u}, {0x00094u, 0x00094u},
     {0x00098u, 0x00098u},
+    {kRegSyncCfg0, kRegSyncCfg0}, {kRegSyncCfg1, kRegSyncCfg1},
+    {0x00118u, 0x00118u}, {0x0011Cu, 0x0011Cu},
+    {0x00200u, 0x00200u}, {0x00204u, 0x00204u},
+    {kReg020C, kReg020C}, {0x00210u, 0x00210u}, {0x00214u, 0x00214u},
     {kRegOverlayOp0, kRegOverlayOp0}, {kRegOverlayOp1, kRegOverlayOp1},
     {0x11004u, 0x11004u}, {0x21004u, 0x21004u}, {0x31004u, 0x31004u},
     {0x41004u, 0x41004u}, {0x51004u, 0x51004u}, {0x91004u, 0x91004u},
@@ -106,8 +118,9 @@ public:
             return kVersionValue;
         }
         if (off == kRegIntrEnable || off == kRegIntrStatus ||
-            off == kRegEbi2PortmapMode || off == kRegOverlayOp0 ||
-            off == kRegOverlayOp1) {
+            off == kRegEbi2PortmapMode || off == kRegSyncCfg0 ||
+            off == kRegSyncCfg1 || off == kReg020C ||
+            off == kRegOverlayOp0 || off == kRegOverlayOp1) {
             return Reg(off);
         }
         HaltUnsupportedAccess("ReadWord", addr, 0);
