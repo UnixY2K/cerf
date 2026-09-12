@@ -110,6 +110,7 @@ The file [`licenses/OFL-1.1.txt`](licenses/OFL-1.1.txt) contains the full licens
 - **[NetBSD](https://www.netbsd.org/)**
 - **[Dolphin](https://dolphin-emu.org/)**
 - **[MAME](https://www.mamedev.org/)**
+- **[OpenOCD](https://openocd.org/)**
 
 ## Trademarks
 
