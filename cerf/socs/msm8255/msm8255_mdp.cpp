@@ -58,6 +58,11 @@ constexpr uint32_t kOverlayProc1 = 0x18000u;
 constexpr uint32_t kRegOverlayOp0 = kOverlayProc0 + 0x14u;
 constexpr uint32_t kRegOverlayOp1 = kOverlayProc1 + 0x14u;
 
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: the OVLP array names
+   the register at +0x04 CFG, and mdp4_overlay.c writes it 0x01 for direct
+   output. */
+constexpr uint32_t kRegOverlayCfg0 = kOverlayProc0 + 0x04u;
+
 /* Linux arch/arm/mach-msm video-msm mdp4.h: MDP4_RGB_BASE and MDP4_RGB_OFF. */
 constexpr uint32_t kRgbBase = 0x40000u;
 constexpr uint32_t kRgbOff  = 0x10000u;
@@ -88,6 +93,8 @@ constexpr Span kWritableSpans[] = {
     {0x00118u, 0x00118u}, {0x0011Cu, 0x0011Cu},
     {0x00200u, 0x00200u}, {0x00204u, 0x00204u},
     {kReg020C, kReg020C}, {0x00210u, 0x00210u}, {0x00214u, 0x00214u},
+    {kRegOverlayCfg0, kRegOverlayCfg0},
+    {kOverlayProc0 + 0x08u, kOverlayProc0 + 0x10u},
     {kRegOverlayOp0, kRegOverlayOp0}, {kRegOverlayOp1, kRegOverlayOp1},
     {kRgbPipeBase + 0x00u, kRgbPipeBase + 0x0Cu},
     {kRgbPipeBase + 0x10u, kRgbPipeBase + 0x10u},
