@@ -21,11 +21,20 @@ constexpr uint32_t kClkCid  = 3u;
 constexpr uint32_t kProcClockEnable    = 5u;
 constexpr uint32_t kProcClockDisable   = 6u;
 constexpr uint32_t kProcClockIsEnabled = 8u;
+constexpr uint32_t kProcSelSdc1Clk     = 16u;
+constexpr uint32_t kProcSelSdc2Clk     = 17u;
+constexpr uint32_t kProcSelSdc3Clk     = 18u;
+constexpr uint32_t kProcSelSdc4Clk     = 19u;
 constexpr uint32_t kProcConfigMdhClk   = 24u;
 constexpr uint32_t kProcGetClkFreqKhz  = 28u;
 constexpr uint32_t kProcRailDisable    = 33u;
 constexpr uint32_t kProcRailEnable     = 34u;
 constexpr uint32_t kProcSelClkFreqHz   = 42u;
+
+constexpr uint32_t kSdcClkSelValues[] = {0u, 6u, 7u, 9u};
+
+constexpr uint32_t kSdcClkSelCount =
+    sizeof(kSdcClkSelValues) / sizeof(kSdcClkSelValues[0]);
 
 constexpr uint32_t kClockPayloadBytes = kPacmarkBytes + kCallArgsOff + 4u;
 constexpr uint32_t kClockResultWords  = 0u;
@@ -166,10 +175,11 @@ private:
                               uint32_t match);
     uint32_t SelectRateHz(const uint32_t* rates, uint32_t count,
                           uint32_t clock, uint32_t freq_hz, uint32_t match);
-    bool     HasRateHz(const uint32_t* rates, uint32_t count,
-                       uint32_t freq_hz) const;
+    bool     Contains(const uint32_t* values, uint32_t count,
+                      uint32_t value) const;
     uint32_t ReportClockFreqKhz(uint32_t clock);
     uint32_t CheckedClock(uint32_t clock);
+    void     CheckedSdcClkSel(uint32_t sel);
     void     MarkClockKnown(uint32_t clock);
     bool     IsClockKnown(uint32_t clock) const;
     void     RecordClockEnable(uint32_t clock, bool on);
@@ -189,6 +199,15 @@ uint32_t Msm8255ClkregimRemoteServer::CheckedClock(uint32_t clock) {
             "this program carries", clock, kClockIdCount);
     }
     return clock;
+}
+
+void Msm8255ClkregimRemoteServer::CheckedSdcClkSel(uint32_t sel) {
+    if (Contains(kSdcClkSelValues, kSdcClkSelCount, sel)) {
+        return;
+    }
+    emu_.Get<Fatal>().Die(
+        "msm8255 clkregim remote server: sdc clock selection %u is outside the "
+        "%u this program answers", sel, kSdcClkSelCount);
 }
 
 void Msm8255ClkregimRemoteServer::MarkClockKnown(uint32_t clock) {
@@ -280,11 +299,11 @@ uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
         "report", clock);
 }
 
-bool Msm8255ClkregimRemoteServer::HasRateHz(const uint32_t* rates,
-                                            uint32_t count,
-                                            uint32_t freq_hz) const {
+bool Msm8255ClkregimRemoteServer::Contains(const uint32_t* values,
+                                           uint32_t count,
+                                           uint32_t value) const {
     for (uint32_t i = 0; i < count; ++i) {
-        if (rates[i] == freq_hz) {
+        if (values[i] == value) {
             return true;
         }
     }
@@ -296,7 +315,7 @@ uint32_t Msm8255ClkregimRemoteServer::SelectRateHz(const uint32_t* rates,
                                                     uint32_t clock,
                                                     uint32_t freq_hz,
                                                     uint32_t match) {
-    if (HasRateHz(rates, count, freq_hz)) {
+    if (Contains(rates, count, freq_hz)) {
         return freq_hz;
     }
 
@@ -351,7 +370,7 @@ uint32_t Msm8255ClkregimRemoteServer::GrantClockFreqHz(uint32_t clock,
                                                         uint32_t freq_hz,
                                                         uint32_t match) {
     if (clock == kMdpCoreClock) {
-        if (!HasRateHz(kMdpCoreRatesHz, kMdpCoreRateCount, freq_hz)) {
+        if (!Contains(kMdpCoreRatesHz, kMdpCoreRateCount, freq_hz)) {
             emu_.Get<Fatal>().Die(
                 "msm8255 clkregim remote server: clock %u has no modeled rate "
                 "for a %u Hz request under match mode %u", clock, freq_hz,
@@ -409,6 +428,15 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
         const bool on      = call.proc == kProcClockEnable ||
                              call.proc == kProcRailEnable;
         RecordClockEnable(by_rail ? RailClock(arg) : arg, on);
+        return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
+                                        peer_pid, peer_cid, call.xid, nullptr,
+                                        kClockResultWords);
+    }
+
+    if (call.proc == kProcSelSdc1Clk || call.proc == kProcSelSdc2Clk ||
+        call.proc == kProcSelSdc3Clk || call.proc == kProcSelSdc4Clk) {
+        codec.RequireCallBytes(*this, call.proc, size, kClockPayloadBytes);
+        CheckedSdcClkSel(Be32(mem.ReadWord(call.body + kArg0Off)));
         return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
                                         peer_pid, peer_cid, call.xid, nullptr,
                                         kClockResultWords);
