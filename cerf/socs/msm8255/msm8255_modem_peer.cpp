@@ -2,6 +2,7 @@
 
 #include "msm8255_dal_remote_server.h"
 #include "msm8255_rpc_router_peer.h"
+#include "msm8255_smd_stage.h"
 #include "msm8255_smem.h"
 
 #include "../../boards/board_context.h"
@@ -261,11 +262,6 @@ void Msm8255ModemPeer::ServiceSmdData(uint32_t cid, uint32_t rec,
             "%u-byte half the channel binding gives each direction",
             head, tail, half);
     }
-    if (tail > head) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 modem peer: the guest's smd fifo wrapped (head=%u tail=%u) "
-            "and the wrapped read is not modeled", head, tail);
-    }
 
     const uint32_t modem_half = apps_half_pa + kHalfChannelBytes;
     uint32_t out_head = mem.ReadWord(modem_half + kHcHeadOff);
@@ -275,19 +271,27 @@ void Msm8255ModemPeer::ServiceSmdData(uint32_t cid, uint32_t rec,
             "half the channel binding gives each direction", out_head, half);
     }
     uint32_t cursor   = tail;
+    uint32_t avail    = (head + half - tail) % half;
     uint32_t produced = 0u;
-    while (cursor < head) {
+    while (avail != 0u) {
+        const uint32_t run = half - cursor;
+        uint32_t in_pa     = fifo_pa + cursor;
+        uint32_t in_avail  = avail;
+        if (avail > run) {
+            auto& stage = emu_.Get<Msm8255SmdStage>();
+            in_avail = stage.Linearize(fifo_pa, half, cursor, avail);
+            in_pa    = stage.BasePa();
+        }
         uint32_t consumed = 0u;
         const uint32_t sent =
             to_router ? emu_.Get<Msm8255RpcRouterPeer>().Answer(
-                            fifo_pa + cursor, head - cursor,
-                            fifo_pa + half + out_head, half - out_head,
-                            consumed)
+                            in_pa, in_avail, fifo_pa + half + out_head,
+                            half - out_head, consumed)
                       : emu_.Get<Msm8255DalRemoteServer>().Answer(
-                            fifo_pa + cursor, head - cursor,
-                            fifo_pa + half + out_head, half - out_head,
-                            consumed);
-        cursor   += consumed;
+                            in_pa, in_avail, fifo_pa + half + out_head,
+                            half - out_head, consumed);
+        cursor    = (cursor + consumed) % half;
+        avail    -= consumed;
         out_head += sent;
         produced += sent;
     }
