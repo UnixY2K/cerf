@@ -64,6 +64,14 @@ constexpr uint32_t kMdhIndexCount = 2u;
 constexpr uint32_t kPmdhClock    = 115u;
 constexpr uint32_t kPmdhMdhIndex = 0u;
 
+constexpr uint32_t kPmdhBridgeClock = 116u;
+constexpr uint32_t kMdpBridgeClock  = 42u;
+constexpr uint32_t kAxiMdpClock     = 18u;
+
+/* Linux arch/arm/mach-msm clock-7x30-vendor.c: pmdh_p_clk, mdp_p_clk and
+   axi_mdp_clk are branch_clk gates that carry no frequency table. */
+constexpr uint32_t kBridgeClockKhz = 0u;
+
 class Msm8255ClkregimRemoteServer : public Msm8255RpcServer {
 public:
     using Msm8255RpcServer::Msm8255RpcServer;
@@ -125,6 +133,10 @@ uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
                 "rate to report", clock);
         }
         return khz;
+    }
+    if (clock == kPmdhBridgeClock || clock == kMdpBridgeClock ||
+        clock == kAxiMdpClock) {
+        return kBridgeClockKhz;
     }
     emu_.Get<Fatal>().Die(
         "msm8255 clkregim remote server: clock %u has no modeled rate to "
