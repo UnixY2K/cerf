@@ -22,6 +22,8 @@ constexpr uint32_t kProcClockEnable   = 5u;
 constexpr uint32_t kProcClockDisable  = 6u;
 constexpr uint32_t kProcConfigMdhClk  = 24u;
 constexpr uint32_t kProcGetClkFreqKhz = 28u;
+constexpr uint32_t kProcRailDisable   = 33u;
+constexpr uint32_t kProcRailEnable    = 34u;
 constexpr uint32_t kProcSelClkFreqHz  = 42u;
 
 constexpr uint32_t kClockPayloadBytes = kPacmarkBytes + kCallArgsOff + 4u;
@@ -183,7 +185,8 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
 
     const Msm8255OncrpcCall call = codec.ParseCall(*this, in_pa, size);
 
-    if (call.proc == kProcClockEnable || call.proc == kProcClockDisable) {
+    if (call.proc == kProcClockEnable || call.proc == kProcClockDisable ||
+        call.proc == kProcRailEnable || call.proc == kProcRailDisable) {
         codec.RequireCallBytes(*this, call.proc, size, kClockPayloadBytes);
         return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
                                         peer_pid, peer_cid, call.xid, nullptr,
