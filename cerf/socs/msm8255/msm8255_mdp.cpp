@@ -105,8 +105,9 @@ public:
         if (off == kRegVersion) {
             return kVersionValue;
         }
-        if (off == kRegIntrStatus || off == kRegEbi2PortmapMode ||
-            off == kRegOverlayOp0 || off == kRegOverlayOp1) {
+        if (off == kRegIntrEnable || off == kRegIntrStatus ||
+            off == kRegEbi2PortmapMode || off == kRegOverlayOp0 ||
+            off == kRegOverlayOp1) {
             return Reg(off);
         }
         HaltUnsupportedAccess("ReadWord", addr, 0);
