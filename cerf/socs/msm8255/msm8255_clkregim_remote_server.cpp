@@ -36,6 +36,12 @@ constexpr uint32_t kSelFreqClock        = 39u;
 constexpr uint32_t kSelFreqHz           = 24576000u;
 constexpr uint32_t kSelFreqMatchAtLeast = 0u;
 
+constexpr uint32_t kMdpVsyncClock = 43u;
+
+/* Linux arch/arm/mach-msm clock-7x30-vendor.c: clk_tbl_mdp_vsync, whose only
+   rate other than the ground source is the low-power crystal's. */
+constexpr uint32_t kMdpVsyncHz = 24576000u;
+
 constexpr uint32_t kHzPerKhz = 1000u;
 
 constexpr uint32_t kResultWords = 1u;
@@ -85,6 +91,9 @@ private:
 uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
     if (clock == kSelFreqClock) {
         return kSelFreqHz / kHzPerKhz;
+    }
+    if (clock == kMdpVsyncClock) {
+        return kMdpVsyncHz / kHzPerKhz;
     }
     emu_.Get<Fatal>().Die(
         "msm8255 clkregim remote server: clock %u has no modeled rate to "
