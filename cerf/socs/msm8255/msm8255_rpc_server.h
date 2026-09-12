@@ -4,9 +4,15 @@
 
 #include <cstdint>
 
+class StateReader;
+class StateWriter;
+
 class Msm8255RpcServer : public Service {
 public:
     using Service::Service;
+
+    virtual void SaveState(StateWriter& w);
+    virtual void RestoreState(StateReader& r);
 
     virtual uint32_t ServerProg() const = 0;
     virtual uint32_t ServerVers() const = 0;

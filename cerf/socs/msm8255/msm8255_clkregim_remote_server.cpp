@@ -7,7 +7,9 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../cpu/emulated_memory.h"
+#include "../../state/state_stream.h"
 
+#include <atomic>
 #include <cstdint>
 
 namespace {
@@ -59,6 +61,9 @@ constexpr uint32_t kMdhRateCount =
 
 constexpr uint32_t kMdhIndexCount = 2u;
 
+constexpr uint32_t kPmdhClock    = 115u;
+constexpr uint32_t kPmdhMdhIndex = 0u;
+
 class Msm8255ClkregimRemoteServer : public Msm8255RpcServer {
 public:
     using Msm8255RpcServer::Msm8255RpcServer;
@@ -80,12 +85,28 @@ public:
                         uint32_t out_cap, uint32_t self_pid, uint32_t peer_pid,
                         uint32_t peer_cid) override;
 
+    void SaveState(StateWriter& w) override {
+        for (const auto& rate : mdh_granted_khz_) {
+            w.Write<uint32_t>(rate.load(std::memory_order_acquire));
+        }
+    }
+
+    void RestoreState(StateReader& r) override {
+        for (auto& rate : mdh_granted_khz_) {
+            uint32_t khz = kRateUnavailable;
+            r.Read(khz);
+            rate.store(khz, std::memory_order_release);
+        }
+    }
+
 private:
     uint32_t GrantMdhRateKhz(uint32_t index, uint32_t min_khz,
                              uint32_t max_khz);
     uint32_t GrantClockFreqHz(uint32_t clock, uint32_t freq_hz,
                               uint32_t match);
     uint32_t ReportClockFreqKhz(uint32_t clock);
+
+    std::atomic<uint32_t> mdh_granted_khz_[kMdhIndexCount] = {};
 };
 
 uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
@@ -94,6 +115,16 @@ uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
     }
     if (clock == kMdpVsyncClock) {
         return kMdpVsyncHz / kHzPerKhz;
+    }
+    if (clock == kPmdhClock) {
+        const uint32_t khz =
+            mdh_granted_khz_[kPmdhMdhIndex].load(std::memory_order_acquire);
+        if (khz == kRateUnavailable) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 clkregim remote server: clock %u has no granted mdh "
+                "rate to report", clock);
+        }
+        return khz;
     }
     emu_.Get<Fatal>().Die(
         "msm8255 clkregim remote server: clock %u has no modeled rate to "
@@ -128,6 +159,7 @@ uint32_t Msm8255ClkregimRemoteServer::GrantMdhRateKhz(uint32_t index,
             granted = rate;
         }
     }
+    mdh_granted_khz_[index].store(granted, std::memory_order_release);
     return granted;
 }
 

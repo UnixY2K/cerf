@@ -25,8 +25,8 @@ public:
     uint32_t ConsumeCallbackReply(uint32_t in_pa, uint32_t size,
                                   uint32_t out_pa, uint32_t out_cap) override;
 
-    void SaveState(StateWriter& w);
-    void RestoreState(StateReader& r);
+    void SaveState(StateWriter& w) override;
+    void RestoreState(StateReader& r) override;
 
 private:
     void ReadDefineNodeArgs(uint32_t body, uint32_t size, uint32_t& callback,
