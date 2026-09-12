@@ -6,6 +6,7 @@
 #include "../../boards/board_context.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
+#include "../../cpu/emulated_memory.h"
 
 #include <cstdint>
 
@@ -15,17 +16,23 @@ constexpr uint32_t kPmappProg = 0x30000060u;
 constexpr uint32_t kPmappVers = 0x00050001u;
 constexpr uint32_t kPmappCid  = 5u;
 
-constexpr uint32_t kProcVregAssert        = 3u;
-constexpr uint32_t kProcVregQuery         = 4u;
+constexpr uint32_t kProcVregSwitch         = 3u;
+constexpr uint32_t kProcVregQuery          = 4u;
 constexpr uint32_t kProcDisplayClockConfig = 21u;
 
-constexpr uint32_t kAssertPayloadBytes      = kPacmarkBytes + kCallArgsOff + 12u;
+constexpr uint32_t kSwitchPayloadBytes      = kPacmarkBytes + kCallArgsOff + 12u;
 constexpr uint32_t kQueryPayloadBytes       = kPacmarkBytes + kCallArgsOff + 8u;
 constexpr uint32_t kDisplayClockPayloadBytes = kPacmarkBytes + kCallArgsOff + 4u;
 
-constexpr uint32_t kAssertResultWords      = 0u;
-constexpr uint32_t kQueryResultWords       = 2u;
+constexpr uint32_t kSwitchResultWords       = 0u;
+constexpr uint32_t kQueryResultWords        = 2u;
 constexpr uint32_t kDisplayClockResultWords = 1u;
+
+constexpr uint32_t kSwitchCmdOff   = kCallArgsOff + 0u;
+constexpr uint32_t kSwitchVregOff  = kCallArgsOff + 4u;
+constexpr uint32_t kSwitchDatumOff = kCallArgsOff + 8u;
+
+constexpr uint32_t kQueryWantDatumOff = kCallArgsOff + 4u;
 
 constexpr uint32_t kXdrTrue  = 1u;
 constexpr uint32_t kXdrFalse = 0u;
@@ -54,22 +61,54 @@ public:
     uint32_t AnswerCall(uint32_t in_pa, uint32_t size, uint32_t out_pa,
                         uint32_t out_cap, uint32_t self_pid, uint32_t peer_pid,
                         uint32_t peer_cid) override;
+
+private:
+    void RequireVregSwitchArgs(uint32_t cmd, uint32_t vreg_id, uint32_t datum);
+    void RequireQueryWantDatum(uint32_t want_datum);
 };
+
+void Msm8255PmappRemoteServer::RequireVregSwitchArgs(uint32_t cmd,
+                                                     uint32_t vreg_id,
+                                                     uint32_t datum) {
+    if (cmd > kXdrTrue) {
+        emu_.Get<Fatal>().Die(
+            "msm8255 pmapp remote server: vreg %u switch command %u is not the "
+            "boolean this call carries", vreg_id, cmd);
+    }
+    if (datum != 0u) {
+        emu_.Get<Fatal>().Die(
+            "msm8255 pmapp remote server: vreg %u switch carries datum "
+            "0x%08X, which this server never supplied through its query call",
+            vreg_id, datum);
+    }
+}
+
+void Msm8255PmappRemoteServer::RequireQueryWantDatum(uint32_t want_datum) {
+    if (want_datum > kXdrTrue) {
+        emu_.Get<Fatal>().Die(
+            "msm8255 pmapp remote server: vreg query asks for a datum with %u, "
+            "which is not the boolean this call carries", want_datum);
+    }
+}
 
 uint32_t Msm8255PmappRemoteServer::AnswerCall(uint32_t in_pa, uint32_t size,
                                               uint32_t out_pa, uint32_t out_cap,
                                               uint32_t self_pid,
                                               uint32_t peer_pid,
                                               uint32_t peer_cid) {
+    auto& mem   = emu_.Get<EmulatedMemory>();
     auto& codec = emu_.Get<Msm8255OncrpcCodec>();
 
     const Msm8255OncrpcCall call = codec.ParseCall(*this, in_pa, size);
 
-    if (call.proc == kProcVregAssert) {
-        codec.RequireCallBytes(*this, call.proc, size, kAssertPayloadBytes);
+    if (call.proc == kProcVregSwitch) {
+        codec.RequireCallBytes(*this, call.proc, size, kSwitchPayloadBytes);
+        RequireVregSwitchArgs(Be32(mem.ReadWord(call.body + kSwitchCmdOff)),
+                              Be32(mem.ReadWord(call.body + kSwitchVregOff)),
+                              Be32(mem.ReadWord(call.body + kSwitchDatumOff)));
         return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kPmappCid,
                                         peer_pid, peer_cid, call.xid, nullptr,
-                                        kAssertResultWords);
+                                        kSwitchResultWords);
     }
 
     if (call.proc == kProcDisplayClockConfig) {
@@ -87,6 +126,7 @@ uint32_t Msm8255PmappRemoteServer::AnswerCall(uint32_t in_pa, uint32_t size,
             "payload is not modeled", call.proc, size);
     }
     codec.RequireCallBytes(*this, call.proc, size, kQueryPayloadBytes);
+    RequireQueryWantDatum(Be32(mem.ReadWord(call.body + kQueryWantDatumOff)));
 
     const uint32_t results[kQueryResultWords] = {kXdrTrue, kXdrFalse};
     return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kPmappCid,
