@@ -75,6 +75,23 @@ constexpr uint32_t kRegOverlayOp1 = kOverlayProc1 + 0x14u;
    output. */
 constexpr uint32_t kRegOverlayCfg0 = kOverlayProc0 + 0x04u;
 
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: LAYERMIXER_IN_CFG, a
+   top-level register whose mdp4_layermixer_in_cfg type gives each pipe a
+   three-bit stage id and a mixer-one bit. */
+constexpr uint32_t kRegLayermixerInCfg = 0x10100u;
+
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: OVERLAY_FLUSH, one
+   boolean per block in the order OVLP0, OVLP1, VG1, VG2, RGB1, RGB2. */
+constexpr uint32_t kRegOverlayFlush = 0x18000u;
+
+/* Linux drivers/gpu/drm/msm registers display mdp4.xml: OVLP0_KICK, the first
+   of the per-block kick registers. */
+constexpr uint32_t kRegOvlp0Kick = 0x00004u;
+
+/* Linux arch/arm/mach-msm video-msm mdp4.h: INTR_OVERLAY0_DONE, which
+   mdp4_util.c mdp4_isr dispatches through its MDDI arm. */
+constexpr uint32_t kIntrOverlay0Done = 0x00000001u;
+
 /* Linux arch/arm/mach-msm video-msm mdp4.h: MDP4_RGB_BASE and MDP4_RGB_OFF. */
 constexpr uint32_t kRgbBase = 0x40000u;
 constexpr uint32_t kRgbOff  = 0x10000u;
@@ -110,6 +127,8 @@ constexpr Span kWritableSpans[] = {
     {kRegOverlayCfg0, kRegOverlayCfg0},
     {kOverlayProc0 + 0x08u, kOverlayProc0 + 0x10u},
     {kRegOverlayOp0, kRegOverlayOp0}, {kRegOverlayOp1, kRegOverlayOp1},
+    {kRegLayermixerInCfg, kRegLayermixerInCfg},
+    {kRegOverlayFlush, kRegOverlayFlush},
     {kRgbPipeBase + 0x00u, kRgbPipeBase + 0x0Cu},
     {kRgbPipeBase + 0x10u, kRgbPipeBase + 0x10u},
     {kRgbPipeBase + 0x40u, kRgbPipeBase + 0x40u},
@@ -162,7 +181,7 @@ public:
             off == kRegEbi2PortmapMode ||
             off == kRegSyncCfg0 || off == kRegSyncCfg1 || off == kReg020C ||
             off == kRegOverlayOp0 || off == kRegOverlayOp1 ||
-            off == kRegRgbOpMode) {
+            off == kRegLayermixerInCfg || off == kRegRgbOpMode) {
             return Reg(off);
         }
         HaltUnsupportedAccess("ReadWord", addr, 0);
@@ -180,6 +199,11 @@ public:
            that source. */
         if (off == kRegIntrClear) {
             SetReg(kRegIntrStatus, Reg(kRegIntrStatus) & ~value);
+            PublishLine();
+            return;
+        }
+        if (off == kRegOvlp0Kick) {
+            SetReg(kRegIntrStatus, Reg(kRegIntrStatus) | kIntrOverlay0Done);
             PublishLine();
             return;
         }
