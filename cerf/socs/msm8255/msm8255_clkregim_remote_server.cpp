@@ -36,9 +36,16 @@ constexpr uint32_t kArg2Off = kCallArgsOff + 8u;
 constexpr uint32_t kThreeArgPayloadBytes =
     kPacmarkBytes + kCallArgsOff + 12u;
 
-constexpr uint32_t kSelFreqClock        = 39u;
-constexpr uint32_t kSelFreqHz           = 24576000u;
-constexpr uint32_t kSelFreqMatchAtLeast = 0u;
+constexpr uint32_t kSelFreqClock = 39u;
+
+/* Linux arch/arm/mach-msm clock-7x30-vendor.c: clk_tbl_mdp_core, the rate
+   table mdp_clk carries. */
+constexpr uint32_t kMdpCoreRatesHz[] = {24576000u,  46080000u,  49152000u,
+                                        52663000u,  92160000u,  122880000u,
+                                        147456000u, 153600000u, 192000000u};
+
+constexpr uint32_t kMdpCoreRateCount =
+    sizeof(kMdpCoreRatesHz) / sizeof(kMdpCoreRatesHz[0]);
 
 constexpr uint32_t kMdpVsyncClock = 43u;
 
@@ -99,6 +106,7 @@ public:
         for (const auto& rate : mdh_granted_khz_) {
             w.Write<uint32_t>(rate.load(std::memory_order_acquire));
         }
+        w.Write<uint32_t>(sel_granted_hz_.load(std::memory_order_acquire));
     }
 
     void RestoreState(StateReader& r) override {
@@ -107,6 +115,9 @@ public:
             r.Read(khz);
             rate.store(khz, std::memory_order_release);
         }
+        uint32_t hz = kRateUnavailable;
+        r.Read(hz);
+        sel_granted_hz_.store(hz, std::memory_order_release);
     }
 
 private:
@@ -117,11 +128,18 @@ private:
     uint32_t ReportClockFreqKhz(uint32_t clock);
 
     std::atomic<uint32_t> mdh_granted_khz_[kMdhIndexCount] = {};
+    std::atomic<uint32_t> sel_granted_hz_{kRateUnavailable};
 };
 
 uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
     if (clock == kSelFreqClock) {
-        return kSelFreqHz / kHzPerKhz;
+        const uint32_t hz = sel_granted_hz_.load(std::memory_order_acquire);
+        if (hz == kRateUnavailable) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 clkregim remote server: clock %u has no granted rate "
+                "to report", clock);
+        }
+        return hz / kHzPerKhz;
     }
     if (clock == kMdpVsyncClock) {
         return kMdpVsyncHz / kHzPerKhz;
@@ -148,12 +166,18 @@ uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
 uint32_t Msm8255ClkregimRemoteServer::GrantClockFreqHz(uint32_t clock,
                                                         uint32_t freq_hz,
                                                         uint32_t match) {
-    if (clock != kSelFreqClock || freq_hz != kSelFreqHz ||
-        match != kSelFreqMatchAtLeast) {
+    bool tabled = false;
+    for (uint32_t i = 0; i < kMdpCoreRateCount; ++i) {
+        if (kMdpCoreRatesHz[i] == freq_hz) {
+            tabled = true;
+        }
+    }
+    if (clock != kSelFreqClock || !tabled) {
         emu_.Get<Fatal>().Die(
             "msm8255 clkregim remote server: clock %u has no modeled rate for "
             "a %u Hz request under match mode %u", clock, freq_hz, match);
     }
+    sel_granted_hz_.store(freq_hz, std::memory_order_release);
     return freq_hz;
 }
 
