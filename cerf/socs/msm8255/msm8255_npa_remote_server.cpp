@@ -1,5 +1,6 @@
 #include "msm8255_npa_remote_server.h"
 
+#include "msm8255_npa_clients.h"
 #include "msm8255_oncrpc_codec.h"
 #include "msm8255_rpc_router_peer.h"
 #include "msm8255_rpc_server_registry.h"
@@ -36,10 +37,12 @@ constexpr uint32_t kXdrFalse = 0u;
 constexpr uint32_t kDefineResultWords       = 1u;
 constexpr uint32_t kCreateClientResultWords = 3u;
 constexpr uint32_t kIssueRequestResultWords = 2u;
+constexpr uint32_t kIssueStateResultWords   = 3u;
 
 constexpr uint32_t kIssueRequestPayloadBytes = kPacmarkBytes + kCallArgsOff + 12u;
 
 constexpr uint32_t kReqArgHandleOff   = kCallArgsOff +  0u;
+constexpr uint32_t kReqArgRequestOff  = kCallArgsOff +  4u;
 constexpr uint32_t kReqArgSuppliedOff = kCallArgsOff +  8u;
 
 constexpr uint32_t kCallPayloadBytes = 64u;
@@ -88,8 +91,6 @@ void Msm8255NpaRemoteServer::OnReady() {
         cb_xid_         = 0;
         cb_proc_        = 0;
         cb_outstanding_ = false;
-
-        last_client_handle_ = 0;
     });
 }
 
@@ -185,16 +186,18 @@ void Msm8255NpaRemoteServer::ReadDefineResourceArgs(uint32_t body,
 
 void Msm8255NpaRemoteServer::ReadCreateClientArgs(uint32_t body, uint32_t size,
                                                   uint32_t& type,
-                                                  uint32_t& supplied) {
+                                                  uint32_t& supplied,
+                                                  uint32_t& resource) {
     auto& mem = emu_.Get<EmulatedMemory>();
 
     auto& codec = emu_.Get<Msm8255OncrpcCodec>();
 
-    const uint32_t resource = codec.SkipXdrString(body, size, kCallArgsOff, 1u);
-    const uint32_t client   = codec.SkipXdrString(body, size, resource, 2u);
-    const uint32_t want     = kPacmarkBytes + client + 8u;
+    const uint32_t named  = codec.SkipXdrString(body, size, kCallArgsOff, 1u);
+    const uint32_t client = codec.SkipXdrString(body, size, named, 2u);
+    const uint32_t want   = kPacmarkBytes + client + 8u;
     codec.RequireCallBytes(*this, kProcCreateClient, size, want);
 
+    resource = emu_.Get<Msm8255NpaClients>().ResourceKeyAt(body, kCallArgsOff);
     type     = Be32(mem.ReadWord(body + client));
     supplied = Be32(mem.ReadWord(body + client + 4u));
     if (type > kClientTypeMax) {
@@ -216,9 +219,10 @@ uint32_t Msm8255NpaRemoteServer::AnswerCreateClient(
     uint32_t self_pid, uint32_t peer_pid, uint32_t peer_cid, uint32_t xid) {
     uint32_t type     = 0u;
     uint32_t supplied = 0u;
-    ReadCreateClientArgs(body, size, type, supplied);
+    uint32_t resource = 0u;
+    ReadCreateClientArgs(body, size, type, supplied, resource);
 
-    const uint32_t handle = ++last_client_handle_;
+    const uint32_t handle = emu_.Get<Msm8255NpaClients>().IssueHandle(resource);
     const uint32_t results[kCreateClientResultWords] = {kNpaResult, kXdrTrue,
                                                         handle};
     const uint32_t written =
@@ -237,27 +241,38 @@ uint32_t Msm8255NpaRemoteServer::AnswerIssueRequest(
         *this, kProcIssueRequest, size, kIssueRequestPayloadBytes);
 
     const uint32_t handle   = Be32(mem.ReadWord(body + kReqArgHandleOff));
+    const uint32_t request  = Be32(mem.ReadWord(body + kReqArgRequestOff));
     const uint32_t supplied = Be32(mem.ReadWord(body + kReqArgSuppliedOff));
 
-    if (handle == 0u || handle > last_client_handle_) {
+    auto& clients = emu_.Get<Msm8255NpaClients>();
+    if (handle == 0u || handle > clients.HandleCount()) {
         emu_.Get<Fatal>().Die(
             "msm8255 npa remote server: the issue-request call names client "
             "handle %u, and this peer has issued %u", handle,
-            last_client_handle_);
+            clients.HandleCount());
     }
-    if (supplied != kXdrFalse) {
+    if (supplied > kXdrTrue) {
         emu_.Get<Fatal>().Die(
             "msm8255 npa remote server: the issue-request call passes %u for "
-            "the out-pointer it supplied, and only an absent one is modeled",
-            supplied);
+            "the out-pointer it supplied, and that is not the boolean this "
+            "call carries", supplied);
     }
 
-    const uint32_t results[kIssueRequestResultWords] = {kNpaResult, kXdrFalse};
-    const uint32_t written =
-        emu_.Get<Msm8255OncrpcCodec>().WriteAcceptedReply(
+    const uint32_t state = clients.ApplyRequest(handle, request);
+
+    if (supplied == kXdrFalse) {
+        const uint32_t results[kIssueRequestResultWords] = {kNpaResult,
+                                                            kXdrFalse};
+        return emu_.Get<Msm8255OncrpcCodec>().WriteAcceptedReply(
             out_pa, out_cap, self_pid, kNpaCid, peer_pid, peer_cid, xid,
             results, kIssueRequestResultWords);
-    return written;
+    }
+
+    const uint32_t results[kIssueStateResultWords] = {kNpaResult, kXdrTrue,
+                                                      state};
+    return emu_.Get<Msm8255OncrpcCodec>().WriteAcceptedReply(
+        out_pa, out_cap, self_pid, kNpaCid, peer_pid, peer_cid, xid, results,
+        kIssueStateResultWords);
 }
 
 uint32_t Msm8255NpaRemoteServer::EmitCallback(uint32_t out_pa,
@@ -409,7 +424,7 @@ void Msm8255NpaRemoteServer::SaveState(StateWriter& w) {
     w.Write<uint32_t>(cb_xid_);
     w.Write<uint32_t>(cb_proc_);
     w.Write<uint32_t>(cb_outstanding_ ? 1u : 0u);
-    w.Write<uint32_t>(last_client_handle_);
+    emu_.Get<Msm8255NpaClients>().SaveState(w);
 }
 
 void Msm8255NpaRemoteServer::RestoreState(StateReader& r) {
@@ -418,8 +433,8 @@ void Msm8255NpaRemoteServer::RestoreState(StateReader& r) {
     r.Read(cb_xid_);
     r.Read(cb_proc_);
     r.Read(outstanding);
-    r.Read(last_client_handle_);
     cb_outstanding_ = outstanding != 0u;
+    emu_.Get<Msm8255NpaClients>().RestoreState(r);
 }
 
 REGISTER_SERVICE(Msm8255NpaRemoteServer);

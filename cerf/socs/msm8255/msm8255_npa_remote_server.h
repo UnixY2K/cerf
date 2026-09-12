@@ -34,7 +34,7 @@ private:
     void ReadDefineResourceArgs(uint32_t body, uint32_t size,
                                 uint32_t& callback, uint32_t& object);
     void ReadCreateClientArgs(uint32_t body, uint32_t size, uint32_t& type,
-                              uint32_t& supplied);
+                              uint32_t& supplied, uint32_t& resource);
     uint32_t AnswerCreateClient(uint32_t body, uint32_t size, uint32_t out_pa,
                                 uint32_t out_cap, uint32_t self_pid,
                                 uint32_t peer_pid, uint32_t peer_cid,
@@ -51,5 +51,4 @@ private:
     uint32_t cb_xid_             = 0;
     uint32_t cb_proc_            = 0;
     bool     cb_outstanding_     = false;
-    uint32_t last_client_handle_ = 0;
 };
