@@ -58,6 +58,16 @@ constexpr uint32_t kOverlayProc1 = 0x18000u;
 constexpr uint32_t kRegOverlayOp0 = kOverlayProc0 + 0x14u;
 constexpr uint32_t kRegOverlayOp1 = kOverlayProc1 + 0x14u;
 
+/* Linux arch/arm/mach-msm video-msm mdp4.h: MDP4_RGB_BASE and MDP4_RGB_OFF. */
+constexpr uint32_t kRgbBase = 0x40000u;
+constexpr uint32_t kRgbOff  = 0x10000u;
+
+/* Linux arch/arm/mach-msm video-msm mdp4_overlay.c mdp4_overlay_rgb_setup
+   programs one pipe from rgb_base and reads MDP_RGB_OP_MODE back to carry the
+   bit its own write mask excludes. */
+constexpr uint32_t kRgbPipeBase  = kRgbBase + kRgbOff;
+constexpr uint32_t kRegRgbOpMode = kRgbPipeBase + 0x58u;
+
 constexpr uint32_t kRegReset = 0u;
 
 constexpr uint32_t kStateChunkWords = 1024u;
@@ -79,6 +89,10 @@ constexpr Span kWritableSpans[] = {
     {0x00200u, 0x00200u}, {0x00204u, 0x00204u},
     {kReg020C, kReg020C}, {0x00210u, 0x00210u}, {0x00214u, 0x00214u},
     {kRegOverlayOp0, kRegOverlayOp0}, {kRegOverlayOp1, kRegOverlayOp1},
+    {kRgbPipeBase + 0x00u, kRgbPipeBase + 0x0Cu},
+    {kRgbPipeBase + 0x10u, kRgbPipeBase + 0x10u},
+    {kRgbPipeBase + 0x40u, kRgbPipeBase + 0x40u},
+    {kRgbPipeBase + 0x50u, kRgbPipeBase + 0x60u},
     {0x11004u, 0x11004u}, {0x21004u, 0x21004u}, {0x31004u, 0x31004u},
     {0x41004u, 0x41004u}, {0x51004u, 0x51004u}, {0x91004u, 0x91004u},
     {0x24400u, 0x24420u}, {0x24500u, 0x24508u}, {0x24580u, 0x24588u},
@@ -124,7 +138,8 @@ public:
         if (off == kRegIntrEnable || off == kRegIntrStatus ||
             off == kRegDispStatus || off == kRegEbi2PortmapMode ||
             off == kRegSyncCfg0 || off == kRegSyncCfg1 || off == kReg020C ||
-            off == kRegOverlayOp0 || off == kRegOverlayOp1) {
+            off == kRegOverlayOp0 || off == kRegOverlayOp1 ||
+            off == kRegRgbOpMode) {
             return Reg(off);
         }
         HaltUnsupportedAccess("ReadWord", addr, 0);
