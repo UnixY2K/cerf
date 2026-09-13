@@ -1,4 +1,4 @@
-#include "msm8255_sdcc_impl.h"
+#include "msm8255_sdcc_window_base.h"
 
 #include <cstdint>
 
