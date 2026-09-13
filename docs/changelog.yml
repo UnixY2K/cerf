@@ -4,6 +4,7 @@
     new: |
       Casio Cassiopeia E-55 support
       Symbol Mk500 support (by @Katamaran21)
+      Siemens MP377 support (by @RaulMerelli)
       Casio Toricomail: bezel touch buttons
     fixed: |
       Philips Velo 1: 16 MB DRAM Miniature Card permanently fitted - 20 MB total for the guest

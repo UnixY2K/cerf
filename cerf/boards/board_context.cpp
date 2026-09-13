@@ -21,7 +21,6 @@ constexpr BoardIdEntry kBoardIds[] = {
     {"siemens_p177",      Board::SiemensP177},
     {"smartbook_g138",    Board::SmartBookG138},
     {"siemens_mp377",     Board::SiemensMP377},
-    {"siemens_mp377_v1040", Board::SiemensMP377},
     {"nec_rockhopper",    Board::NecRockhopper},
     {"nec_mobilepro_700", Board::NecMobilePro700},
     {"casio_toricomail",  Board::CasioToricomail},

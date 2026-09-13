@@ -205,7 +205,7 @@ See ``cerf.exe`` command line usage at [cerf.cx/articles/command-line](https://c
     <tr>
       <td align="center"><img src="launcher/assets/icons/badge_arm.png" align="middle" title="ARM" alt="ARM"/><br/><b>Intel IOP13xx</b><br/><sub>XScale (ARMv5TE)</sub></td>
       <td>
-        <img src="cerf/assets/icons_sources/board.svg" width="16" height="16" title="PDA" alt="PDA"/> <b>Siemens SIMATIC MP 377 (12-inch Touch)</b> <code>siemens_mp377_v1040</code><br/>
+        <img src="cerf/assets/icons_sources/board.svg" width="16" height="16" title="PDA" alt="PDA"/> <b>Siemens SIMATIC MP 377</b> <code>siemens_mp377</code><br/>
         Windows CE 5
       </td>
       <td><img src="cerf/assets/icons_sources/display.svg" width="32" height="32" title="Display" alt="Display"/> <img src="cerf/assets/icons_sources/stylus.svg" width="32" height="32" title="Touch" alt="Touch"/> <img src="cerf/assets/icons_sources/speaker_active.svg" width="32" height="32" title="Sound" alt="Sound"/> <img src="cerf/assets/icons_sources/internet.svg" width="32" height="32" title="Network" alt="Network"/></td>
@@ -314,6 +314,7 @@ This repositroy includes [cerf.cx](https://cerf.cx) source code at ``docs/websit
         <p><b>📱 Devices</b><br/>
           🆕 Casio Cassiopeia E-55 support<br/>
           🆕 Symbol Mk500 support (by @Katamaran21)<br/>
+          🆕 Siemens MP377 support (by @RaulMerelli)<br/>
           🆕 Casio Toricomail: bezel touch buttons<br/>
           ✅ Philips Velo 1: 16 MB DRAM Miniature Card permanently fitted - 20 MB total for the guest<br/>
           ✅ Device Emulator: keyboard no longer drops or repeats keys while typing<br/>

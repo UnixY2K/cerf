@@ -458,8 +458,8 @@ BOARDS_INFORMATION = [
         },
     },
     {
-        "name": "Siemens SIMATIC MP 377 (12-inch Touch)",
-        "board_id": "siemens_mp377_v1040",
+        "name": "Siemens SIMATIC MP 377",
+        "board_id": "siemens_mp377",
         "supported": True,
         "soc": SOC_IOP13XX,
         "operating_systems": [WINDOWS_CE_5],
