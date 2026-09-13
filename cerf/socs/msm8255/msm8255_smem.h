@@ -23,6 +23,8 @@ private:
     void SeedSpeedRecord();
     void SeedPerfLevels();
     void SeedAvsConfig();
+    void WriteDalRecordName(uint32_t rec, const char* name);
+    void SeedDalGlobalContext();
     void PublishRamPartitions();
     void PublishItem(uint32_t id, uint32_t off, uint32_t size, uint32_t magic);
 };

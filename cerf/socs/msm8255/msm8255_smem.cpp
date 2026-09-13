@@ -84,6 +84,32 @@ constexpr uint32_t kBootFlagsOff  = 72u;
 
 constexpr uint32_t kBootFlags = 1u;
 
+constexpr uint32_t kIdDalGlobalCtxt = 404u;
+constexpr uint32_t kDalCtxtBytes    = 0x2000u;
+constexpr uint32_t kDalArenaBytes   = 4096u;
+
+constexpr uint32_t kDalRecLenOff   = 0x00u;
+constexpr uint32_t kDalRecNameOff  = 0x04u;
+constexpr uint32_t kDalRecNameMax  = 11u;
+constexpr uint32_t kDalRecFlagsOff = 0x18u;
+
+constexpr uint32_t kDalHdrBytes = 32u;
+constexpr uint32_t kDalHdrFlags = 0x20000u;
+constexpr char     kDalHdrName[] = "dalspinlock";
+
+constexpr uint32_t kDalBusBytes = 48u;
+constexpr uint32_t kDalBusFlags = 0x10000u;
+constexpr const char* kDalBusNames[] = {"PMIC_SSBI", "CODEC_SSBI"};
+constexpr uint32_t kDalBusCount =
+    static_cast<uint32_t>(sizeof(kDalBusNames) / sizeof(kDalBusNames[0]));
+static_assert(kDalHdrBytes + kDalBusCount * kDalBusBytes <= kDalArenaBytes,
+              "the seeded dal records must fit the mapped arena page");
+
+constexpr uint32_t kDalCtxtVersionOff = 0x20u;
+constexpr uint32_t kDalCtxtPoweredOff = 0x24u;
+constexpr uint32_t kDalCtxtVersion    = 2u;
+constexpr uint32_t kDalCtxtPowered    = 1u;
+
 constexpr uint32_t kBspBytes  = 20456u;
 constexpr uint32_t kSrcBytes  = 208u;
 constexpr uint32_t kBspMagic  = 0xCCEE0003u;
@@ -126,7 +152,14 @@ constexpr uint32_t kBspOff = Align8(kFixedAreaEnd);
 constexpr uint32_t kSrcOff = Align8(kBspOff + kBspBytes);
 constexpr uint32_t kPtableOff = Align8(kSrcOff + kSrcBytes);
 constexpr uint32_t kBootInfoOff = Align8(kPtableOff + kPtableBytes);
-constexpr uint32_t kHeapUsedEnd = Align8(kBootInfoOff + kBootInfoBytes);
+constexpr uint32_t kDalCtxtOff  = Align8(kBootInfoOff + kBootInfoBytes);
+constexpr uint32_t kDalArenaPad =
+    (kDalArenaBytes - ((kSmemPa + kDalCtxtOff) & (kDalArenaBytes - 1u)))
+    & (kDalArenaBytes - 1u);
+constexpr uint32_t kDalArenaOff = kDalCtxtOff + kDalArenaPad;
+constexpr uint32_t kHeapUsedEnd = Align8(kDalCtxtOff + kDalCtxtBytes);
+static_assert(kHeapUsedEnd <= kSmemSize,
+              "the published smem items must fit the shared window");
 
 }
 
@@ -211,6 +244,8 @@ void Msm8255Smem::Seed() {
     PublishItem(kIdBootInfo, kBootInfoOff, kBootInfoBytes, 0u);
     mem.WriteWord(kSmemPa + kBootInfoOff + kBootFlagsOff, kBootFlags);
 
+    SeedDalGlobalContext();
+
     SeedSpeedRecord();
     SeedPerfLevels();
     SeedAvsConfig();
@@ -242,6 +277,37 @@ void Msm8255Smem::SeedAvsConfig() {
     auto& mem = emu_.Get<EmulatedMemory>();
     mem.WriteWord(kSmemPa + kBspOff + kBspAvscsrOff, kAvscsr);
     mem.WriteWord(kSmemPa + kBspOff + kBspSawCfgOff, kSawCfgSeed);
+}
+
+void Msm8255Smem::WriteDalRecordName(uint32_t rec, const char* name) {
+    auto& mem = emu_.Get<EmulatedMemory>();
+    for (uint32_t i = 0; i < kDalRecNameMax && name[i] != '\0'; ++i) {
+        mem.WriteByte(rec + kDalRecNameOff + i,
+                      static_cast<uint8_t>(name[i]));
+    }
+}
+
+void Msm8255Smem::SeedDalGlobalContext() {
+    PublishItem(kIdDalGlobalCtxt, kDalCtxtOff, kDalCtxtBytes, 0u);
+
+    auto& mem = emu_.Get<EmulatedMemory>();
+
+    mem.WriteWord(kSmemPa + kDalCtxtOff, kDalArenaPad);
+
+    const uint32_t hdr = kSmemPa + kDalArenaOff;
+    mem.WriteWord(hdr + kDalRecLenOff, kDalHdrBytes);
+    WriteDalRecordName(hdr, kDalHdrName);
+    mem.WriteWord(hdr + kDalRecFlagsOff, kDalHdrFlags);
+
+    uint32_t rec = hdr + kDalHdrBytes;
+    for (uint32_t i = 0; i < kDalBusCount; ++i) {
+        mem.WriteWord(rec + kDalRecLenOff, kDalBusBytes);
+        WriteDalRecordName(rec, kDalBusNames[i]);
+        mem.WriteWord(rec + kDalRecFlagsOff,    kDalBusFlags);
+        mem.WriteWord(rec + kDalCtxtVersionOff, kDalCtxtVersion);
+        mem.WriteWord(rec + kDalCtxtPoweredOff, kDalCtxtPowered);
+        rec += kDalBusBytes;
+    }
 }
 
 void Msm8255Smem::PublishRamPartitions() {
