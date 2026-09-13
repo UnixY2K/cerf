@@ -387,11 +387,22 @@ uint8_t* EmitCp15RegisterTransfer(uint8_t*      cursor,
             EmitMovBaseDisp32Reg(cursor, kStateReg, rd_disp, kEax);
         } else {
             /* FCSE PID = bits[31:25] (ARM1136 TRM §3.3.35); [24:0] SBZ, ignored
-               not faulted. Mask so the walker's `p |= process_id` fold is right.
-               PID reuse is the stale-block trigger → context-switch flush. */
+               not faulted. PID reuse is the stale-block trigger → ctx flush. */
             cursor = EmitFieldWriteContextSwitch(cursor, emit->TranslationCache(), rd_disp,
                 static_cast<int32_t>(offsetof(ArmMmuState, process_id)),
                 0xFE000000u);
+
+            EmitMovRegBaseDisp32(cursor, kEax, kMmuReg,
+                static_cast<int32_t>(offsetof(ArmMmuState, process_id)));
+            EmitTestByteBaseDisp32Imm8(cursor, kMmuReg,
+                static_cast<int32_t>(
+                    offsetof(ArmMmuState, effective_control_register)),
+                0x01u);
+            uint8_t* mmu_on = EmitJnzLabel(cursor);
+            EmitXorRegReg(cursor, kEax, kEax);
+            FixupLabel(mmu_on, cursor);
+            EmitMovBaseDisp32Reg(cursor, kMmuReg,
+                static_cast<int32_t>(offsetof(ArmMmuState, fcse_fold_id)), kEax);
         }
         break;
     }

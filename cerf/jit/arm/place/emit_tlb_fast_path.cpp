@@ -16,7 +16,7 @@ uint8_t* EmitTlbFastPath(uint8_t* cursor, BlockContext* ctx, TlbAccess access) {
     const bool is_write = (access != TlbAccess::kRead);
 
     const int32_t tlb     = static_cast<int32_t>(offsetof(ArmMmuState, data_tlb));
-    const int32_t pid     = static_cast<int32_t>(offsetof(ArmMmuState, process_id));
+    const int32_t pid     = static_cast<int32_t>(offsetof(ArmMmuState, fcse_fold_id));
     const int32_t ctxid   = static_cast<int32_t>(offsetof(ArmMmuState, contextidr));
     const int32_t cwbase  = static_cast<int32_t>(offsetof(ArmMmuState, code_word_base));
     const int32_t cwtop   = static_cast<int32_t>(offsetof(ArmMmuState, code_word_top));

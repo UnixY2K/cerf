@@ -65,7 +65,7 @@ uint8_t* ArmPageWalker::MapGuestVirtualToHost(ArmCpuState* cpu_state, uint32_t p
        FCSETranslate(va)" precedes the SCTLR.M test, and the stage-1-disabled
        branch takes "TranslateAddressVS1Off(mva)", whose result is
        "physicaladdress = '00000000':va" over that mva (p. B3-1505). */
-    p = ArmFcseFold(p, state_.process_id);
+    p = ArmFcseFold(p, state_.fcse_fold_id);
 
     if (!state_.effective_control_register.bits.m) {
         uint8_t* host = memory_->TryTranslate(p);

@@ -34,7 +34,7 @@ uint8_t* EmitJumpCacheProbe(uint8_t* cursor, BlockContext* ctx) {
     EmitAndRegImm32(cursor, kEcx, 0xFE000000u);
     uint8_t* const no_fold = EmitJnzLabel32(cursor);
     EmitOrRegBaseDisp32(cursor, kEax, kMmuReg,
-        static_cast<int32_t>(offsetof(ArmMmuState, process_id)));
+        static_cast<int32_t>(offsetof(ArmMmuState, fcse_fold_id)));
     FixupLabel32(no_fold, cursor);
 
     EmitMovRegReg(cursor, kEcx, kEax);

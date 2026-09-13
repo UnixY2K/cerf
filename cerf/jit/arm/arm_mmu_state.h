@@ -205,6 +205,10 @@ struct ArmMmuState {
     uint32_t  process_id            = 0;   /* FCSEIDR.PID:'0'*25, ORed over
                                               va<24:0> per ARM DDI 0406C.c
                                               B3.19.2 FCSETranslate */
+    /* ARM DDI 0406C.c D10.1.1 / DDI 0100I B4.2.3: the FCSE PID "is SBZ when
+       the MMU is disabled", and "Behavior is UNPREDICTABLE if the FCSE PID is
+       not zero when the MMU is disabled". Kept by ArmMmu::RefreshFcseFold. */
+    uint32_t  fcse_fold_id          = 0;
     uint32_t  coprocessor_access    = 0;   /* CPACR */
     uint32_t  cssel_register        = 0;   /* CSSELR */
     uint32_t  ttbr1                 = 0;

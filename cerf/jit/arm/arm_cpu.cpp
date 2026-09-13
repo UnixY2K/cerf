@@ -236,6 +236,7 @@ void ArmCpu::RaiseResetException(uint32_t initial_pc, bool initial_thumb) {
         mmu_state->effective_control_register.word = pending_resume_control_;
         mmu_state->translation_table_base.word     = pending_resume_ttbr0_;
         mmu_state->domain_access_control           = pending_resume_dacr_;
+        emu_.Get<ArmMmu>().RefreshFcseFold();
         pending_resume_mmu_set_ = false;
     }
 

@@ -23,7 +23,7 @@ void ArmMmuProbe::OnReady() {
 
 std::optional<uint32_t> ArmMmuProbe::WalkVaToPa(uint32_t va) {
     const ArmMmuState& state_ = *state_p_;
-    const uint32_t p = ArmFcseFold(va, state_.process_id);
+    const uint32_t p = ArmFcseFold(va, state_.fcse_fold_id);
 
     const uint32_t l1_pa = ArmL1DescriptorAddress(
         p, state_.ttbcr, state_.translation_table_base.word, state_.ttbr1);
@@ -74,7 +74,7 @@ std::optional<uint32_t> ArmMmuProbe::WalkVaToPa(uint32_t va) {
 
 const ArmTlbEntry* ArmMmuProbe::MatchDataTlb(uint32_t va, uint32_t* folded) const {
     const ArmMmuState& state_ = *state_p_;
-    const uint32_t p = ArmFcseFold(va, state_.process_id);
+    const uint32_t p = ArmFcseFold(va, state_.fcse_fold_id);
     *folded = p;
     const uint8_t current_asid = static_cast<uint8_t>(state_.contextidr & 0xFFu);
     const uint32_t base = ArmTlbSetBase(p);
@@ -105,7 +105,7 @@ bool ArmMmuProbe::ExecPageGlobal(uint32_t folded_va) const {
 uint8_t* ArmMmuProbe::PeekVaToHost(uint32_t va) {
     const ArmMmuState& state_ = *state_p_;
     if (!state_.effective_control_register.bits.m) {
-        const uint32_t pa = ArmFcseFold(va, state_.process_id);
+        const uint32_t pa = ArmFcseFold(va, state_.fcse_fold_id);
         uint8_t* ram = memory_->TryTranslateWrite(pa);
         return ram ? ram : memory_->TryTranslate(pa);
     }
@@ -121,7 +121,7 @@ uint8_t* ArmMmuProbe::PeekVaToHost(uint32_t va) {
 bool ArmMmuProbe::PeekVaToPa(uint32_t va, uint32_t* pa) {
     const ArmMmuState& state_ = *state_p_;
     if (!state_.effective_control_register.bits.m) {
-        *pa = ArmFcseFold(va, state_.process_id);
+        *pa = ArmFcseFold(va, state_.fcse_fold_id);
         return true;
     }
 

@@ -363,7 +363,7 @@ void* ArmBlockCompiler::Compile(uint32_t guest_pc) {
     }
 
     ArmMmuState*   mmu_state = mmu_->State();
-    const uint32_t folded_pc = ArmFcseFold(guest_pc, mmu_state->process_id);
+    const uint32_t folded_pc = ArmFcseFold(guest_pc, mmu_state->fcse_fold_id);
 
     if (walker_->TranslateExecute(cpu_state_, guest_pc) == nullptr) {
         if (mmu_->io_pending()) {
@@ -435,7 +435,7 @@ void* ArmBlockCompiler::Compile(uint32_t guest_pc) {
             block_ctx_.self        = stored;
             block_ctx_.guest_start = folded_pc;
             block_ctx_.phys_start  = phys_start;
-            block_ctx_.fcse_pid    = mmu_state->process_id;
+            block_ctx_.fcse_pid    = mmu_state->fcse_fold_id;
             block_ctx_.jump_cache  = space.jump_cache;
             block_ctx_.thumb       = thumb;
 

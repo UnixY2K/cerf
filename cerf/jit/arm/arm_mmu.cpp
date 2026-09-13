@@ -93,6 +93,7 @@ void ArmMmu::RestoreState(StateReader& r) {
     r.Read(state_.tpidruro);
     r.Read(state_.tpidrprw);
     r.Read(state_.l2_aux_control);
+    RefreshFcseFold();
     /* Restored TTBR0/process_id/contextidr differ from the live TLBs'
        context; a stale entry would return the prior context's PA. */
     ArmTlbFlushAll(&state_.data_tlb);
@@ -123,6 +124,7 @@ void ArmMmu::ResetControlRegisters() {
        synchronization at its first step, so the reset values are in effect
        for the instruction fetched at the reset entry. */
     state_.effective_control_register = state_.control_register;
+    RefreshFcseFold();
 
     ArmTlbFlushAll(&state_.data_tlb);
     ArmTlbFlushAll(&state_.instruction_tlb);
@@ -133,11 +135,20 @@ void ArmMmu::InvalidateAllTlbs() {
     ArmTlbFlushAll(&state_.data_tlb);
 }
 
+/* ARM DDI 0406C.c D10.1.1 / DDI 0100I B4.2.3 (p. B4-6): the FCSE PID "is SBZ
+   when the MMU is disabled", and "Behavior is UNPREDICTABLE if the FCSE PID is
+   not zero when the MMU is disabled". */
+void ArmMmu::RefreshFcseFold() {
+    state_.fcse_fold_id =
+        state_.effective_control_register.bits.m ? state_.process_id : 0u;
+}
+
 void ArmMmu::SynchronizeSctlr() {
     if (state_.effective_control_register.word == state_.control_register.word) {
         return;
     }
     state_.effective_control_register = state_.control_register;
+    RefreshFcseFold();
     InvalidateAllTlbs();
     emu_.Get<ArmTranslationCache>().InvalidateVaCachesAll();
 }

@@ -158,7 +158,7 @@ void ArmJit::Run() {
     }
 
     const uint32_t pc = cpu_state_->gprs[ArmGpr::kR15];
-    const uint32_t folded = ArmFcseFold(pc, mmu_->State()->process_id);
+    const uint32_t folded = ArmFcseFold(pc, mmu_->State()->fcse_fold_id);
     void*          native =
         cache_->Lookup(cpu_state_->cpsr.bits.thumb_mode != 0u, folded);
     if (native == nullptr) {

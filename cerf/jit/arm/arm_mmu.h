@@ -50,6 +50,8 @@ public:
     void InvalidateAllTlbs();
     void SynchronizeSctlr();
 
+    void RefreshFcseFold();
+
     void BindWalker(ArmPageWalker* walker) { walker_ = walker; }
 
     static uint8_t* __fastcall TranslateReadHelper(uint32_t va, ArmMmu* mmu);
