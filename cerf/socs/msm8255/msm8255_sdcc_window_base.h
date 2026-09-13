@@ -6,13 +6,18 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../peripherals/peripheral_dispatcher.h"
+#include "../../state/state_stream.h"
+#include "../guest_cpu_reset.h"
 
+#include <atomic>
 #include <cstdint>
 
 namespace cerf_msm8255_sdcc_detail {
 
-/* Linux drivers/mmc/host msmsdcc.h: MMCICOMMAND, MMCIDATACTRL, MMCICLEAR,
-   MMCIMASK0 and MMCIMASK1. */
+/* Linux drivers/mmc/host msmsdcc.h: MMCIPOWER, MMCICLOCK, MMCICOMMAND,
+   MMCIDATACTRL, MMCICLEAR, MMCIMASK0 and MMCIMASK1. */
+constexpr uint32_t kPower    = 0x000u;
+constexpr uint32_t kClock    = 0x004u;
 constexpr uint32_t kCommand  = 0x00Cu;
 constexpr uint32_t kDataCtrl = 0x02Cu;
 constexpr uint32_t kClear    = 0x038u;
@@ -28,6 +33,12 @@ constexpr uint32_t kClearStaticMask =
 
 constexpr uint32_t kQuiescent = 0u;
 
+constexpr uint32_t kPowerWritable = 0x00000041u;
+constexpr uint32_t kClockWritable = 0x0000FF00u;
+constexpr uint32_t kMaskWritable  = 0x1FFFFFFFu;
+
+constexpr uint32_t kUngroundedPowerOn = 0u;
+
 template <uint32_t kBase, uint32_t kSize>
 class Msm8255SdccWindowBase : public Peripheral {
 public:
@@ -39,6 +50,8 @@ public:
     }
 
     void OnReady() override {
+        emu_.Get<GuestCpuReset>().RegisterResetListener(
+            [this](ResetLineKind) { ResetState(); });
         emu_.Get<PeripheralDispatcher>().Register(this);
     }
 
@@ -46,15 +59,44 @@ public:
     uint32_t MmioSize() const override { return kSize; }
 
     uint32_t ReadWord(uint32_t addr) override {
+        switch (addr - kBase) {
+        case kPower: return Load(power_);
+        case kClock: return Load(clock_);
+        case kMask0: return Load(mask0_);
+        case kMask1: return Load(mask1_);
+        default:     break;
+        }
         HaltUnsupportedAccess("ReadWord", addr, 0u);
     }
 
     void WriteWord(uint32_t addr, uint32_t value) override {
         switch (addr - kBase) {
+        case kPower:
+            if ((value & ~kPowerWritable) == 0u) {
+                Store(power_, value);
+                return;
+            }
+            break;
+        case kClock:
+            if ((value & ~kClockWritable) == 0u) {
+                Store(clock_, value);
+                return;
+            }
+            break;
+        case kMask0:
+            if ((value & ~kMaskWritable) == 0u) {
+                Store(mask0_, value);
+                return;
+            }
+            break;
+        case kMask1:
+            if ((value & ~kMaskWritable) == 0u) {
+                Store(mask1_, value);
+                return;
+            }
+            break;
         case kCommand:
         case kDataCtrl:
-        case kMask0:
-        case kMask1:
             if (value == kQuiescent) {
                 return;
             }
@@ -69,6 +111,53 @@ public:
         }
         HaltUnsupportedAccess("WriteWord", addr, value);
     }
+
+    void SaveState(StateWriter& w) override {
+        w.Write<uint32_t>(Load(power_));
+        w.Write<uint32_t>(Load(clock_));
+        w.Write<uint32_t>(Load(mask0_));
+        w.Write<uint32_t>(Load(mask1_));
+    }
+
+    void RestoreState(StateReader& r) override {
+        RestoreField(r, power_, kPowerWritable, kPower);
+        RestoreField(r, clock_, kClockWritable, kClock);
+        RestoreField(r, mask0_, kMaskWritable, kMask0);
+        RestoreField(r, mask1_, kMaskWritable, kMask1);
+    }
+
+private:
+    static uint32_t Load(const std::atomic<uint32_t>& reg) {
+        return reg.load(std::memory_order_acquire);
+    }
+
+    static void Store(std::atomic<uint32_t>& reg, uint32_t value) {
+        reg.store(value, std::memory_order_release);
+    }
+
+    void ResetState() {
+        Store(power_, kUngroundedPowerOn);
+        Store(clock_, kUngroundedPowerOn);
+        Store(mask0_, kUngroundedPowerOn);
+        Store(mask1_, kUngroundedPowerOn);
+    }
+
+    void RestoreField(StateReader& r, std::atomic<uint32_t>& reg,
+                      uint32_t writable, uint32_t offset) {
+        uint32_t value = kUngroundedPowerOn;
+        r.Read(value);
+        if ((value & ~writable) != 0u) {
+            emu_.Get<Fatal>().Die(
+                "Peripheral at 0x%08X: restored +0x%03X value 0x%08X carries "
+                "bits the guest never writes", kBase, offset, value);
+        }
+        Store(reg, value);
+    }
+
+    std::atomic<uint32_t> power_{kUngroundedPowerOn};
+    std::atomic<uint32_t> clock_{kUngroundedPowerOn};
+    std::atomic<uint32_t> mask0_{kUngroundedPowerOn};
+    std::atomic<uint32_t> mask1_{kUngroundedPowerOn};
 };
 
 }  // namespace cerf_msm8255_sdcc_detail
