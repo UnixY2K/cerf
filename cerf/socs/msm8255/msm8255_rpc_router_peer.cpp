@@ -132,8 +132,8 @@ uint32_t Msm8255RpcRouterPeer::Answer(uint32_t in_pa, uint32_t in_avail,
     const uint32_t reply_bytes = (1u + announced) * msg_bytes;
     if (out_cap < reply_bytes) {
         emu_.Get<Fatal>().Die(
-            "msm8255 rpc router peer: the modem fifo has %u contiguous bytes "
-            "free, and the hello reply plus %u server announcements need %u",
+            "msm8255 rpc router peer: the modem fifo has %u bytes free, and "
+            "the hello reply plus %u server announcements need %u",
             out_cap, announced, reply_bytes);
     }
 
@@ -198,8 +198,8 @@ uint32_t Msm8255RpcRouterPeer::AnswerConfirmRx(uint32_t in_pa, uint32_t out_pa,
     const uint32_t bytes = kHdrBytes + kCtrlMsgBytes;
     if (out_cap < reserved + bytes) {
         emu_.Get<Fatal>().Die(
-            "msm8255 rpc router peer: the modem fifo has %u contiguous bytes "
-            "free, and the resume-tx needs %u after the %u already reserved",
+            "msm8255 rpc router peer: the modem fifo has %u bytes free, and "
+            "the resume-tx needs %u after the %u already reserved",
             out_cap, bytes, reserved);
     }
     const uint32_t self_pid = mem.ReadWord(in_pa + kHdrDstPidOff);

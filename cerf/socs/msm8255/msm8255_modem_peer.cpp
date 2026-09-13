@@ -52,6 +52,10 @@ constexpr uint32_t kIdSmdFifoBase     = 338u;
 constexpr uint32_t kFifoWindowAlign = 0x1Fu;
 constexpr uint32_t kFifoWindowMin   = 0x400u;
 constexpr uint32_t kFifoWindowMax   = 0x10000u;
+
+static_assert(Msm8255SmdStage::WriteCapacity() >= kFifoWindowMax,
+              "the write stage must cover the largest accepted fifo direction");
+
 constexpr uint32_t kSmdChannels       = 64u;
 constexpr uint32_t kAllocElmBytes     = 32u;
 constexpr uint32_t kAllocElmNameBytes = 20u;
@@ -71,6 +75,13 @@ constexpr uint32_t kHcFTailOff       = 9u;
 constexpr uint32_t kHcFStateOff      = 10u;
 constexpr uint32_t kHcTailOff        = 12u;
 constexpr uint32_t kHcHeadOff        = 16u;
+
+/* Linux arch/arm/mach-msm smd.c smd_stream_write_avail answers
+   fifo_mask - ((head - tail) & fifo_mask), leaving one byte unwritten so that
+   head meeting tail always reads as empty. */
+constexpr uint32_t SmdWriteAvail(uint32_t half, uint32_t head, uint32_t tail) {
+    return half - 1u - ((head + half - tail) % half);
+}
 
 /* Linux arch/arm/mach-msm smd_private.h: SMD_SS_*, SMD_TYPE_MASK and
    SMD_TYPE_APPS_MODEM. */
@@ -265,10 +276,12 @@ void Msm8255ModemPeer::ServiceSmdData(uint32_t cid, uint32_t rec,
 
     const uint32_t modem_half = apps_half_pa + kHalfChannelBytes;
     uint32_t out_head = mem.ReadWord(modem_half + kHcHeadOff);
-    if (out_head >= half) {
+    const uint32_t out_tail = mem.ReadWord(modem_half + kHcTailOff);
+    if (out_head >= half || out_tail >= half) {
         emu_.Get<Fatal>().Die(
-            "msm8255 modem peer: the modem write index %u leaves the %u-byte "
-            "half the channel binding gives each direction", out_head, half);
+            "msm8255 modem peer: the modem fifo indices (head=%u tail=%u) leave "
+            "the %u-byte half the channel binding gives each direction",
+            out_head, out_tail, half);
     }
     uint32_t cursor   = tail;
     uint32_t avail    = (head + half - tail) % half;
@@ -282,14 +295,20 @@ void Msm8255ModemPeer::ServiceSmdData(uint32_t cid, uint32_t rec,
             in_avail = stage.Linearize(fifo_pa, half, cursor, avail);
             in_pa    = stage.BasePa();
         }
+        auto& out_stage = emu_.Get<Msm8255SmdStage>();
+        const uint32_t out_pos = out_head % half;
+        const uint32_t out_cap = SmdWriteAvail(half, out_pos, out_tail);
         uint32_t consumed = 0u;
         const uint32_t sent =
             to_router ? emu_.Get<Msm8255RpcRouterPeer>().Answer(
-                            in_pa, in_avail, fifo_pa + half + out_head,
-                            half - out_head, consumed)
+                            in_pa, in_avail, out_stage.WriteBasePa(), out_cap,
+                            consumed)
                       : emu_.Get<Msm8255DalRemoteServer>().Answer(
-                            in_pa, in_avail, fifo_pa + half + out_head,
-                            half - out_head, consumed);
+                            in_pa, in_avail, out_stage.WriteBasePa(), out_cap,
+                            consumed);
+        if (sent != 0u) {
+            out_stage.Scatter(fifo_pa + half, half, out_pos, sent);
+        }
         cursor    = (cursor + consumed) % half;
         avail    -= consumed;
         out_head += sent;

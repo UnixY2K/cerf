@@ -288,9 +288,9 @@ uint32_t Msm8255NpaRemoteServer::EmitCallback(uint32_t out_pa,
     const uint32_t bytes = kHdrBytes + kPacmarkBytes + kCbBodyBytes;
     if (out_cap < reserved + bytes) {
         emu_.Get<Fatal>().Die(
-            "msm8255 npa remote server: the modem fifo has %u contiguous bytes "
-            "free, and the procedure %u callback needs %u after the %u already "
-            "written", out_cap, proc, bytes, reserved);
+            "msm8255 npa remote server: the modem fifo has %u bytes free, and "
+            "the procedure %u callback needs %u after the %u already written",
+            out_cap, proc, bytes, reserved);
     }
 
     uint32_t srv_pid = 0;
