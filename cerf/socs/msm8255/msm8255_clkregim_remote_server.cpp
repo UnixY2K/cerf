@@ -1,7 +1,9 @@
+#include "msm8255_clock_rates.h"
 #include "msm8255_oncrpc_codec.h"
 #include "msm8255_rpc_server.h"
 #include "msm8255_rpc_server_registry.h"
 #include "msm8255_rpcrouter_wire.h"
+#include "msm8255_value_set.h"
 
 #include "../../boards/board_context.h"
 #include "../../core/cerf_emulator.h"
@@ -46,34 +48,7 @@ constexpr uint32_t kArg2Off = kCallArgsOff + 8u;
 constexpr uint32_t kThreeArgPayloadBytes =
     kPacmarkBytes + kCallArgsOff + 12u;
 
-constexpr uint32_t kMdpCoreClock = 39u;
-
-constexpr uint32_t kMatchAtLeast = 0u;
-constexpr uint32_t kMatchAtMost  = 1u;
-constexpr uint32_t kMatchNearest = 2u;
-
-constexpr uint32_t kFreqMax = 0xFFFFFFFFu;
-
-/* Linux arch/arm/mach-msm clock-7x30-vendor.c: clk_tbl_mdp_core, the rate
-   table mdp_clk carries. */
-constexpr uint32_t kMdpCoreRatesHz[] = {24576000u,  46080000u,  49152000u,
-                                        52663000u,  92160000u,  122880000u,
-                                        147456000u, 153600000u, 192000000u};
-
-constexpr uint32_t kMdpCoreRateCount =
-    sizeof(kMdpCoreRatesHz) / sizeof(kMdpCoreRatesHz[0]);
-
-constexpr uint32_t kMdpVsyncClock = 43u;
-
-/* Linux arch/arm/mach-msm clock-7x30-vendor.c: clk_tbl_mdp_vsync, whose only
-   rate other than the ground source is the low-power crystal's. */
-constexpr uint32_t kMdpVsyncHz = 24576000u;
-
-constexpr uint32_t kHzPerKhz = 1000u;
-
 constexpr uint32_t kResultWords = 1u;
-
-constexpr uint32_t kRateUnavailable = 0u;
 
 constexpr uint32_t kXdrTrue  = 1u;
 constexpr uint32_t kXdrFalse = 0u;
@@ -89,28 +64,6 @@ constexpr uint32_t kRailClock[] = {0u,  187u, 110u, 61u, 39u,
 constexpr uint32_t kRailCount = sizeof(kRailClock) / sizeof(kRailClock[0]);
 
 constexpr uint32_t kNoClock = 0u;
-
-/* Linux arch/arm/mach-msm clock-7x30-vendor.c: the driving rates of
-   clk_tbl_mdh, the table both pmdh_clk and emdh_clk carry. */
-constexpr uint32_t kMdhRatesHz[] = {49150000u,  92160000u,  122880000u,
-                                    184320000u, 245760000u, 368640000u,
-                                    384000000u, 445500000u};
-
-constexpr uint32_t kMdhRateCount =
-    sizeof(kMdhRatesHz) / sizeof(kMdhRatesHz[0]);
-
-constexpr uint32_t kMdhIndexCount = 2u;
-
-constexpr uint32_t kPmdhClock    = 115u;
-constexpr uint32_t kPmdhMdhIndex = 0u;
-
-constexpr uint32_t kPmdhBridgeClock = 116u;
-constexpr uint32_t kMdpBridgeClock  = 42u;
-constexpr uint32_t kAxiMdpClock     = 18u;
-
-/* Linux arch/arm/mach-msm clock-7x30-vendor.c: pmdh_p_clk, mdp_p_clk and
-   axi_mdp_clk are branch_clk gates that carry no frequency table. */
-constexpr uint32_t kBridgeClockKhz = 0u;
 
 class Msm8255ClkregimRemoteServer : public Msm8255RpcServer {
 public:
@@ -134,11 +87,7 @@ public:
                         uint32_t peer_cid) override;
 
     void SaveState(StateWriter& w) override {
-        for (const auto& rate : mdh_granted_khz_) {
-            w.Write<uint32_t>(rate.load(std::memory_order_acquire));
-        }
-        w.Write<uint32_t>(
-            mdp_core_granted_hz_.load(std::memory_order_acquire));
+        emu_.Get<Msm8255ClockRates>().SaveState(w);
         for (const auto& word : clock_known_) {
             w.Write<uint32_t>(word.load(std::memory_order_acquire));
         }
@@ -148,14 +97,7 @@ public:
     }
 
     void RestoreState(StateReader& r) override {
-        for (auto& rate : mdh_granted_khz_) {
-            uint32_t khz = kRateUnavailable;
-            r.Read(khz);
-            rate.store(khz, std::memory_order_release);
-        }
-        uint32_t hz = kRateUnavailable;
-        r.Read(hz);
-        mdp_core_granted_hz_.store(hz, std::memory_order_release);
+        emu_.Get<Msm8255ClockRates>().RestoreState(r);
         for (auto& word : clock_known_) {
             uint32_t bits = 0u;
             r.Read(bits);
@@ -169,15 +111,6 @@ public:
     }
 
 private:
-    uint32_t GrantMdhRateKhz(uint32_t index, uint32_t min_khz,
-                             uint32_t max_khz);
-    uint32_t GrantClockFreqHz(uint32_t clock, uint32_t freq_hz,
-                              uint32_t match);
-    uint32_t SelectRateHz(const uint32_t* rates, uint32_t count,
-                          uint32_t clock, uint32_t freq_hz, uint32_t match);
-    bool     Contains(const uint32_t* values, uint32_t count,
-                      uint32_t value) const;
-    uint32_t ReportClockFreqKhz(uint32_t clock);
     uint32_t CheckedClock(uint32_t clock);
     void     CheckedSdcClkSel(uint32_t sel);
     void     MarkClockKnown(uint32_t clock);
@@ -186,8 +119,6 @@ private:
     uint32_t RailClock(uint32_t rail);
     uint32_t ReportClockEnabled(uint32_t clock);
 
-    std::atomic<uint32_t> mdh_granted_khz_[kMdhIndexCount] = {};
-    std::atomic<uint32_t> mdp_core_granted_hz_{kRateUnavailable};
     std::atomic<uint32_t> clock_known_[kClockWordCount]  = {};
     std::atomic<uint32_t> clock_refcount_[kClockIdCount] = {};
 };
@@ -202,7 +133,7 @@ uint32_t Msm8255ClkregimRemoteServer::CheckedClock(uint32_t clock) {
 }
 
 void Msm8255ClkregimRemoteServer::CheckedSdcClkSel(uint32_t sel) {
-    if (Contains(kSdcClkSelValues, kSdcClkSelCount, sel)) {
+    if (Msm8255ValueSetContains(kSdcClkSelValues, kSdcClkSelCount, sel)) {
         return;
     }
     emu_.Get<Fatal>().Die(
@@ -266,151 +197,6 @@ uint32_t Msm8255ClkregimRemoteServer::ReportClockEnabled(uint32_t clock) {
     return held != 0u ? kXdrTrue : kXdrFalse;
 }
 
-uint32_t Msm8255ClkregimRemoteServer::ReportClockFreqKhz(uint32_t clock) {
-    if (clock == kMdpCoreClock) {
-        const uint32_t hz =
-            mdp_core_granted_hz_.load(std::memory_order_acquire);
-        if (hz == kRateUnavailable) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 clkregim remote server: clock %u has no granted rate "
-                "to report", clock);
-        }
-        return hz / kHzPerKhz;
-    }
-    if (clock == kMdpVsyncClock) {
-        return kMdpVsyncHz / kHzPerKhz;
-    }
-    if (clock == kPmdhClock) {
-        const uint32_t khz =
-            mdh_granted_khz_[kPmdhMdhIndex].load(std::memory_order_acquire);
-        if (khz == kRateUnavailable) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 clkregim remote server: clock %u has no granted mdh "
-                "rate to report", clock);
-        }
-        return khz;
-    }
-    if (clock == kPmdhBridgeClock || clock == kMdpBridgeClock ||
-        clock == kAxiMdpClock) {
-        return kBridgeClockKhz;
-    }
-    emu_.Get<Fatal>().Die(
-        "msm8255 clkregim remote server: clock %u has no modeled rate to "
-        "report", clock);
-}
-
-bool Msm8255ClkregimRemoteServer::Contains(const uint32_t* values,
-                                           uint32_t count,
-                                           uint32_t value) const {
-    for (uint32_t i = 0; i < count; ++i) {
-        if (values[i] == value) {
-            return true;
-        }
-    }
-    return false;
-}
-
-uint32_t Msm8255ClkregimRemoteServer::SelectRateHz(const uint32_t* rates,
-                                                    uint32_t count,
-                                                    uint32_t clock,
-                                                    uint32_t freq_hz,
-                                                    uint32_t match) {
-    if (Contains(rates, count, freq_hz)) {
-        return freq_hz;
-    }
-
-    uint32_t above     = 0u;
-    uint32_t below     = 0u;
-    bool     has_above = false;
-    bool     has_below = false;
-
-    for (uint32_t i = 0; i < count; ++i) {
-        const uint32_t rate = rates[i];
-        if (rate > freq_hz && (!has_above || rate < above)) {
-            above     = rate;
-            has_above = true;
-        }
-        if (rate < freq_hz && (!has_below || rate > below)) {
-            below     = rate;
-            has_below = true;
-        }
-    }
-
-    if (match == kMatchNearest) {
-        if (has_above &&
-            (!has_below || freq_hz - below >= above - freq_hz)) {
-            return above;
-        }
-    } else if (match == kMatchAtLeast) {
-        if (freq_hz != kFreqMax) {
-            if (!has_above) {
-                emu_.Get<Fatal>().Die(
-                    "msm8255 clkregim remote server: clock %u has no modeled "
-                    "rate at or above the %u Hz its caller asked for",
-                    clock, freq_hz);
-            }
-            return above;
-        }
-    } else if (match != kMatchAtMost) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 clkregim remote server: clock %u was asked for %u Hz "
-            "under match mode %u, which this program does not carry",
-            clock, freq_hz, match);
-    }
-
-    if (!has_below) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 clkregim remote server: clock %u has no modeled rate at "
-            "or below the %u Hz its caller asked for", clock, freq_hz);
-    }
-    return below;
-}
-
-uint32_t Msm8255ClkregimRemoteServer::GrantClockFreqHz(uint32_t clock,
-                                                        uint32_t freq_hz,
-                                                        uint32_t match) {
-    if (clock == kMdpCoreClock) {
-        if (!Contains(kMdpCoreRatesHz, kMdpCoreRateCount, freq_hz)) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 clkregim remote server: clock %u has no modeled rate "
-                "for a %u Hz request under match mode %u", clock, freq_hz,
-                match);
-        }
-        mdp_core_granted_hz_.store(freq_hz, std::memory_order_release);
-        return freq_hz;
-    }
-    if (clock == kPmdhClock) {
-        const uint32_t rate =
-            SelectRateHz(kMdhRatesHz, kMdhRateCount, clock, freq_hz, match);
-        mdh_granted_khz_[kPmdhMdhIndex].store(rate / kHzPerKhz,
-                                              std::memory_order_release);
-        return rate;
-    }
-    emu_.Get<Fatal>().Die(
-        "msm8255 clkregim remote server: clock %u has no modeled rate table "
-        "for a %u Hz request under match mode %u", clock, freq_hz, match);
-}
-
-uint32_t Msm8255ClkregimRemoteServer::GrantMdhRateKhz(uint32_t index,
-                                                       uint32_t min_khz,
-                                                       uint32_t max_khz) {
-    if (index >= kMdhIndexCount) {
-        emu_.Get<Fatal>().Die(
-            "msm8255 clkregim remote server: mdh clock index %u is outside the "
-            "%u the rate table serves", index, kMdhIndexCount);
-    }
-
-    uint32_t granted = kRateUnavailable;
-    for (uint32_t i = 0; i < kMdhRateCount; ++i) {
-        const uint32_t khz = kMdhRatesHz[i] / kHzPerKhz;
-        if (khz >= min_khz && khz <= max_khz && khz > granted) {
-            granted = khz;
-        }
-    }
-    mdh_granted_khz_[index].store(granted, std::memory_order_release);
-    return granted;
-}
-
 uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
     uint32_t in_pa, uint32_t size, uint32_t out_pa, uint32_t out_cap,
     uint32_t self_pid, uint32_t peer_pid, uint32_t peer_cid) {
@@ -454,7 +240,8 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
     if (call.proc == kProcGetClkFreqKhz) {
         codec.RequireCallBytes(*this, call.proc, size, kClockPayloadBytes);
         const uint32_t results[kResultWords] = {
-            ReportClockFreqKhz(Be32(mem.ReadWord(call.body + kArg0Off)))};
+            emu_.Get<Msm8255ClockRates>().ReportClockFreqKhz(
+                Be32(mem.ReadWord(call.body + kArg0Off)))};
         return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
                                         peer_pid, peer_cid, call.xid, results,
                                         kResultWords);
@@ -471,9 +258,12 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
     const uint32_t arg1 = Be32(mem.ReadWord(call.body + kArg1Off));
     const uint32_t arg2 = Be32(mem.ReadWord(call.body + kArg2Off));
 
+    auto& rates = emu_.Get<Msm8255ClockRates>();
+
     const uint32_t results[kResultWords] = {
-        call.proc == kProcConfigMdhClk ? GrantMdhRateKhz(arg0, arg1, arg2)
-                                       : GrantClockFreqHz(arg0, arg1, arg2)};
+        call.proc == kProcConfigMdhClk
+            ? rates.GrantMdhRateKhz(arg0, arg1, arg2)
+            : rates.GrantClockFreqHz(arg0, arg1, arg2)};
     return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
                                     peer_pid, peer_cid, call.xid, results,
                                     kResultWords);
