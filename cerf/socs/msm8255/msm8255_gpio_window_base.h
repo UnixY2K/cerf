@@ -9,7 +9,7 @@
 #include "../../state/state_stream.h"
 #include "../guest_cpu_reset.h"
 #include "msm8255_gpio_banks.h"
-#include "msm8255_gpio_pinmux.h"
+#include "msm8255_gpio_pin_mux.h"
 
 #include <cstdint>
 #include <typeinfo>

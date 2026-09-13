@@ -1,4 +1,4 @@
-#include "msm8255_gpio_window_impl.h"
+#include "msm8255_gpio_window_base.h"
 #include "msm8255_hw_revision.h"
 
 #include <cstdint>
