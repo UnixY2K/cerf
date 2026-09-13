@@ -38,16 +38,15 @@ constexpr uint32_t kStatusCmdPtrRdy   = 1u << 0;
 constexpr uint32_t kStatusRsltValid   = 1u << 1;
 constexpr uint32_t kStatusRsltCountSh = 29u;
 
-/* Linux arch/arm/mach-msm include mach dma.h: DMOV_RSLT_CONF_IRQ_EN,
-   _FORCE_FLUSH_RSLT and _FORCE_TOP_PTR_RSLT. */
+/* Linux arch/arm/mach-msm include mach dma.h: DMOV_RSLT_CONF_IRQ_EN. */
 constexpr uint32_t kRsltConfIrqEn  = 1u << 0;
-constexpr uint32_t kRsltConfFlush  = 1u << 1;
-constexpr uint32_t kRsltConfServed = kRsltConfIrqEn | kRsltConfFlush;
+constexpr uint32_t kRsltConfServed = kRsltConfIrqEn;
 
 /* Linux arch/arm/mach-msm include mach dma.h: DMOV_CMD_ADDR is addr >> 3 and
-   the command type occupies bits 31:29 as DMOV_CMD_LIST, DMOV_CMD_PTR_LIST,
-   DMOV_CMD_INPUT_CFG and DMOV_CMD_OUTPUT_CFG. */
+   DMOV_CMD_LIST, DMOV_CMD_PTR_LIST, DMOV_CMD_INPUT_CFG and DMOV_CMD_OUTPUT_CFG
+   are 0 through 3 shifted left by 29. */
 constexpr uint32_t kCmdPtrTypeShift = 29u;
+constexpr uint32_t kCmdPtrTypeMask  = 3u;
 constexpr uint32_t kCmdPtrTypeList  = 0u;
 
 /* Linux arch/arm/mach-msm include mach dma.h: CMD_PTR_ADDR is addr >> 3,
@@ -57,22 +56,16 @@ constexpr uint32_t kPtrAddrMask = 0x1FFFFFFFu;
 constexpr uint32_t kPtrLast     = 1u << 31;
 constexpr uint32_t kPtrType     = 3u << 29;
 
-/* Linux arch/arm/mach-msm include mach dma.h: CMD_LC marks the last command,
-   CMD_SAH and CMD_DAH hold the source and destination addresses, and the
-   transfer mode occupies the low bits with CMD_MODE_SINGLE zero. */
+/* Linux arch/arm/mach-msm include mach dma.h: CMD_LC marks the last command and
+   the transfer mode occupies the low bits with CMD_MODE_SINGLE zero. */
 constexpr uint32_t kCmdLast     = 1u << 31;
-constexpr uint32_t kCmdDstHold  = 1u << 18;
-constexpr uint32_t kCmdSrcHold  = 1u << 17;
 constexpr uint32_t kCmdModeMask = 7u;
 constexpr uint32_t kCmdModeSingle = 0u;
-constexpr uint32_t kCmdActed = kCmdLast | kCmdDstHold | kCmdSrcHold |
-                               kCmdModeMask;
+constexpr uint32_t kCmdActed = kCmdLast | kCmdModeMask;
 
 /* Linux arch/arm/mach-msm irqs-7x30.h: INT_ADM_AARM is INT_ADM_SC2. */
 constexpr int kVicLine = 64 + 15;
 
-/* Linux arch/arm/mach-msm include mach dma.h: DMOV_STATUS_RSLT_COUNT reads
-   bits 31:29, so a count above seven cannot be reported. */
 constexpr uint32_t kRsltFifoDepth = 7u;
 
 constexpr uint32_t kMaxPointers = 256u;
@@ -108,7 +101,6 @@ public:
         std::lock_guard<std::mutex> g(lock_);
         if (reg == kRegStatus)   return StatusLocked(ch);
         if (reg == kRegRslt)     return PopResultLocked(ch);
-        if (reg == kRegRsltConf) return chans_[ch].rslt_conf;
         HaltUnsupportedAccess("ReadWord", addr, 0);
     }
 
@@ -233,6 +225,12 @@ private:
     }
 
     uint32_t BusRead(uint32_t pa) {
+        if (emu_.Get<PeripheralDispatcher>().IsPeripheralAddress(pa)) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 dmov: command list read at 0x%08X reaches a "
+                "peripheral, and the client-interface burst width this engine "
+                "drives is not modeled", pa);
+        }
         uint32_t v = 0;
         if (!emu_.Get<PhysicalBus>().Read(pa, BusWidth::Word, &v)) {
             emu_.Get<Fatal>().Die(
@@ -242,16 +240,21 @@ private:
         return v;
     }
 
-    void Move(uint32_t cmd, uint32_t src, uint32_t dst, uint32_t len) {
-        auto& bus = emu_.Get<PhysicalBus>();
-        const bool hold_src = (cmd & kCmdSrcHold) != 0u;
-        const bool hold_dst = (cmd & kCmdDstHold) != 0u;
+    void Move(uint32_t src, uint32_t dst, uint32_t len) {
+        auto& bus  = emu_.Get<PhysicalBus>();
+        auto& disp = emu_.Get<PeripheralDispatcher>();
         const BusWidth w = ((len | src | dst) & 3u) == 0u ? BusWidth::Word
                                                           : BusWidth::Byte;
         const uint32_t step = static_cast<uint32_t>(w);
         for (uint32_t done = 0; done < len; done += step) {
-            const uint32_t s = hold_src ? src : src + done;
-            const uint32_t d = hold_dst ? dst : dst + done;
+            const uint32_t s = src + done;
+            const uint32_t d = dst + done;
+            if (disp.IsPeripheralAddress(s) || disp.IsPeripheralAddress(d)) {
+                emu_.Get<Fatal>().Die(
+                    "msm8255 dmov: transfer 0x%08X -> 0x%08X reaches a "
+                    "peripheral, and the client-interface burst width this "
+                    "engine drives is not modeled", s, d);
+            }
             uint32_t v = 0;
             if (!bus.Read(s, w, &v) || !bus.Write(d, w, v)) {
                 emu_.Get<Fatal>().Die(
@@ -273,10 +276,13 @@ private:
             if ((cmd & ~kCmdActed) != 0u) {
                 emu_.Get<Fatal>().Die(
                     "msm8255 dmov: command word 0x%08X at 0x%08X carries fields "
-                    "outside the address-hold, mode and last-command set this "
-                    "engine acts on", cmd, pa);
+                    "outside the mode and last-command set this engine acts on",
+                    cmd, pa);
             }
-            Move(cmd, BusRead(pa + 4u), BusRead(pa + 8u), BusRead(pa + 12u));
+            const uint32_t src = BusRead(pa + 4u);
+            const uint32_t dst = BusRead(pa + 8u);
+            const uint32_t len = BusRead(pa + 12u);
+            Move(src, dst, len);
             pa += 16u;
             if ((cmd & kCmdLast) != 0u) return;
         }
@@ -285,12 +291,26 @@ private:
             "marker", kMaxCommands);
     }
 
+    struct NestGuard {
+        uint32_t& depth;
+        explicit NestGuard(uint32_t& d) : depth(d) { ++depth; }
+        ~NestGuard() { --depth; }
+    };
+
     void RunTransfer(uint32_t ch, uint32_t value) {
-        const uint32_t type = value >> kCmdPtrTypeShift;
-        if (type != kCmdPtrTypeList) {
+        if (nest_ != 0u) {
             emu_.Get<Fatal>().Die(
-                "msm8255 dmov: command pointer 0x%08X selects command type %u, "
-                "whose walk is not modeled", value, type);
+                "msm8255 dmov: a transfer moved into this window's own command "
+                "pointer for channel %u, and a transfer that issues another "
+                "transfer is not modeled", ch);
+        }
+        NestGuard nest(nest_);
+        const uint32_t type = (value >> kCmdPtrTypeShift) & kCmdPtrTypeMask;
+        if (type != kCmdPtrTypeList || (value >> 31) != 0u) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 dmov: command pointer 0x%08X carries type %u with bit "
+                "31 set to %u, and only a type 0 pointer list with bit 31 clear "
+                "is modeled", value, type, value >> 31);
         }
         uint32_t list = (value & kPtrAddrMask) << 3;
         for (uint32_t i = 0; i < kMaxPointers; ++i) {
@@ -318,6 +338,7 @@ private:
         for (Channel& c : chans_) c = Channel{};
     }
 
+    uint32_t   nest_ = 0u;
     std::mutex lock_;
     Channel    chans_[kChannelCount];
 };
