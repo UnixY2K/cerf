@@ -6,17 +6,12 @@
 
 #include "jit_block_index.h"
 
-/* VA-indexed jump cache (QEMU tb_jmp_cache). Keyed by FCSE-folded VA; the
-   block index itself is phys-keyed. Flushed on context switch / SMC / full
-   flush so a stale VA→native mapping never survives an address-space change. */
 constexpr uint32_t kJumpCacheSize = 4096;
 
 constexpr uint32_t kBlockUnindexed = 0xFFFFFFFFu;
 struct JumpCacheEntry {
     uint32_t  folded_va;
     void*     native;
-    /* QEMU cpu-exec.c tb_lookup: a tb_jmp_cache hit is validated against the
-       TB before use. */
     JitBlock* blk;
     uint32_t  reserved;
 };
@@ -34,15 +29,12 @@ struct IsaBlockSpace {
     uint32_t      asid_populated[8] = {0};
     JumpCacheEntry jump_cache[kJumpCacheSize];
 
-    /* Per-physical-page intrusive list of outer blocks (QEMU
-       PageDesc.first_tb), sized over the DRAM page extent. */
     std::vector<JitBlock*> page_heads;
     uint32_t               page_base  = 0;
     uint32_t               page_count = 0;
 
     void JumpCacheFlush() { std::memset(jump_cache, 0, sizeof(jump_cache)); }
 
-    /* QEMU tb_jmp_cache_clear_page (accel/tcg/cputlb.c:150). */
     void JumpCacheClearPage(uint32_t page_va) {
         const uint32_t base = page_va & 0xFFFFF000u;
         for (uint32_t off = 0; off < 0x1000u; off += 4u) {
@@ -87,23 +79,6 @@ struct IsaBlockSpace {
     void MarkPopulated(uint8_t asid) {
         asid_populated[asid >> 5] |= (1u << (asid & 31u));
     }
-    bool ContainsRange(uint32_t start, uint32_t end) const {
-        if (global.ContainsRange(start, end)) return true;
-        for (uint32_t w = 0; w < 8u; ++w) {
-            uint32_t bits = asid_populated[w];
-            if (!bits) continue;
-            for (uint32_t b = 0; b < 32u; ++b) {
-                if ((bits & (1u << b)) &&
-                    per_asid[(w << 5) + b].ContainsRange(start, end)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-    /* Drop the removed block's jump-cache slot (QEMU tb_jmp_cache_inval_tb):
-       clear only this entry, never the whole cache, so unrelated dispatches
-       stay warm across SMC invalidation. */
     static void ClearJcSlot(uint32_t folded_va, void* ctx) {
         auto* sp = static_cast<IsaBlockSpace*>(ctx);
         JumpCacheEntry& e = sp->jump_cache[(folded_va >> 2) & (kJumpCacheSize - 1u)];
@@ -114,7 +89,6 @@ struct IsaBlockSpace {
         }
     }
 
-    /* QEMU tb_link_page. */
     void IndexInsert(JitBlock* outer, JitBlockIndex* owner, uint32_t index_start,
                      uint32_t index_split = 0,
                      uint32_t index_start2 = kBlockUnindexed) {
@@ -147,7 +121,6 @@ struct IsaBlockSpace {
         return a_hi >= b_lo && a_lo <= b_hi;
     }
 
-    /* QEMU tb_invalidate_phys_page_range__locked. */
     static bool IntersectsBlock(const JitBlock* blk, uint32_t lo, uint32_t hi) {
         const uint32_t span = blk->guest_end - blk->guest_start;
         if (blk->index_split == 0) {
@@ -159,9 +132,6 @@ struct IsaBlockSpace {
                              blk->index_start2 + (span - blk->index_split), lo, hi);
     }
 
-    /* QEMU's !cpu_physical_memory_get_dirty_flag(DIRTY_MEMORY_CODE): the CODE bit
-       is cleared exactly while a page's first_tb list is non-empty (tb_page_add /
-       tb_invalidate_phys_page_range__locked), so the list itself is the predicate. */
     bool PageHasBlocks(uint32_t index_addr) const {
         const uint32_t pg = index_addr >> 12;
         if (pg < page_base || pg >= page_base + page_count) return false;
@@ -187,7 +157,6 @@ struct IsaBlockSpace {
         UnlinkFromPage(outer, 0);
         UnlinkFromPage(outer, 1);
     }
-    /* QEMU tb_invalidate_phys_page_range__locked. */
     uint32_t RemoveRange(uint32_t lo, uint32_t hi) {
         uint32_t removed = 0;
         const uint32_t pg_lo = lo >> 12;

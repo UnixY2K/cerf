@@ -1,50 +1,91 @@
 #include "jit_block_index.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "../core/log.h"
 
 void JitBlockIndex::Initialize() {
-    Flush();
+    SetCapacity(kInitialSlots);
+    count_ = 0;
+}
+
+void JitBlockIndex::SetCapacity(size_t slots) {
+    table_.assign(slots, Slot{});
+    mask_  = slots - 1u;
+    shift_ = 32u;
+    for (size_t s = slots; s > 1u; s >>= 1) --shift_;
 }
 
 void JitBlockIndex::Flush() {
-    blocks_by_start_.clear();
-    max_span_ = 0;
+    std::fill(table_.begin(), table_.end(), Slot{});
+    count_ = 0;
+}
+
+void JitBlockIndex::Grow() {
+    std::vector<Slot> old;
+    old.swap(table_);
+    SetCapacity(old.empty() ? kInitialSlots : old.size() * 2u);
+    for (const Slot& s : old) {
+        if (s.blk == nullptr) continue;
+        size_t i = Bucket(s.key);
+        while (table_[i].blk != nullptr) i = (i + 1u) & mask_;
+        table_[i] = s;
+    }
 }
 
 JitBlock* JitBlockIndex::PlaceOuterAt(uint8_t* slab, const JitBlock& block) {
     JitBlock* stored = reinterpret_cast<JitBlock*>(slab);
     std::memcpy(stored, &block, sizeof(JitBlock));
 
-    const auto ins = blocks_by_start_.emplace(stored->guest_start, stored);
-    if (!ins.second) {
-        LOG(Caution, "JitBlockIndex::PlaceOuterAt: duplicate guest_start "
-                "0x%08X (existing block was not evicted)\n",
-            stored->guest_start);
-        CerfFatalExit(CERF_FATAL_RUNTIME_ERROR);
-    }
+    if ((count_ + 1u) * 4u > table_.size() * 3u) Grow();
 
-    const uint32_t span = stored->guest_end - stored->guest_start;
-    if (span > max_span_) max_span_ = span;
+    size_t i = Bucket(stored->guest_start);
+    while (table_[i].blk != nullptr) {
+        if (table_[i].key == stored->guest_start) {
+            LOG(Caution, "JitBlockIndex::PlaceOuterAt: duplicate guest_start "
+                    "0x%08X (existing block was not evicted)\n",
+                stored->guest_start);
+            CerfFatalExit(CERF_FATAL_RUNTIME_ERROR);
+        }
+        i = (i + 1u) & mask_;
+    }
+    table_[i].key = stored->guest_start;
+    table_[i].blk = stored;
+    ++count_;
     return stored;
 }
 
 JitBlock* JitBlockIndex::FindExact(uint32_t guest_start) {
-    const auto it = blocks_by_start_.find(guest_start);
-    return it != blocks_by_start_.end() ? it->second : nullptr;
-}
-
-bool JitBlockIndex::ContainsRange(uint32_t start, uint32_t end) const {
-    const uint32_t scan_lo = (start > max_span_) ? (start - max_span_) : 0u;
-    for (auto it = blocks_by_start_.lower_bound(scan_lo);
-         it != blocks_by_start_.end() && it->first <= end; ++it) {
-        if (it->second->guest_end >= start) return true;
+    if (table_.empty()) return nullptr;
+    size_t i = Bucket(guest_start);
+    while (table_[i].blk != nullptr) {
+        if (table_[i].key == guest_start) return table_[i].blk;
+        i = (i + 1u) & mask_;
     }
-    return false;
+    return nullptr;
 }
 
-/* QEMU accel/tcg/cpu-exec.c:619 tb_add_jump(). */
+void JitBlockIndex::EraseAt(size_t idx) {
+    table_[idx] = Slot{};
+    size_t i = idx;
+    size_t j = idx;
+    for (;;) {
+        j = (j + 1u) & mask_;
+        if (table_[j].blk == nullptr) break;
+        const size_t k = Bucket(table_[j].key);
+        if (i <= j) {
+            if (i < k && k <= j) continue;
+        } else {
+            if (i < k || k <= j) continue;
+        }
+        table_[i] = table_[j];
+        table_[j] = Slot{};
+        i = j;
+    }
+    --count_;
+}
+
 void JitBlockIndex::LinkChain(JitBlock* src, uint32_t slot, JitBlock* dest,
                               uint8_t* site, uint8_t* fallback) {
     src->chain_site[slot]          = site;
@@ -56,14 +97,12 @@ void JitBlockIndex::LinkChain(JitBlock* src, uint32_t slot, JitBlock* dest,
     dest->chain_src_head_slot      = static_cast<uint8_t>(slot);
 }
 
-/* QEMU accel/tcg/tb-maint.c:871 tb_reset_jump(). */
 void JitBlockIndex::RestoreFallbackJump(JitBlock* src, uint32_t slot) {
     const uint32_t disp = static_cast<uint32_t>(
         src->chain_fallback[slot] - (src->chain_site[slot] + 4));
     std::memcpy(src->chain_site[slot], &disp, 4);
 }
 
-/* QEMU accel/tcg/tb-maint.c:812 tb_remove_from_jmp_list(). */
 void JitBlockIndex::DetachFromDest(JitBlock* block, uint32_t slot) {
     JitBlock* const dest = block->chain_target[slot];
     if (dest == nullptr) return;
@@ -92,7 +131,6 @@ void JitBlockIndex::DetachFromDest(JitBlock* block, uint32_t slot) {
     block->chain_src_next[slot] = nullptr;
 }
 
-/* QEMU accel/tcg/tb-maint.c:878 tb_jmp_unlink(). */
 void JitBlockIndex::UnlinkChains(JitBlock* block) {
     DetachFromDest(block, 0u);
     DetachFromDest(block, 1u);
@@ -113,8 +151,19 @@ void JitBlockIndex::UnlinkChains(JitBlock* block) {
 
 void JitBlockIndex::RemoveNode(JitBlock* block, ClearJumpCacheFn clear_jc,
                                void* ctx) {
-    const auto it = blocks_by_start_.find(block->guest_start);
-    if (it == blocks_by_start_.end() || it->second != block) {
+    size_t idx   = 0;
+    bool   found = false;
+    if (!table_.empty()) {
+        idx = Bucket(block->guest_start);
+        while (table_[idx].blk != nullptr) {
+            if (table_[idx].key == block->guest_start) {
+                found = true;
+                break;
+            }
+            idx = (idx + 1u) & mask_;
+        }
+    }
+    if (!found || table_[idx].blk != block) {
         LOG(Caution, "JitBlockIndex::RemoveNode: block 0x%08X..0x%08X is not "
                 "the indexed record for its guest_start\n",
             block->guest_start, block->guest_end);
@@ -122,5 +171,5 @@ void JitBlockIndex::RemoveNode(JitBlock* block, ClearJumpCacheFn clear_jc,
     }
     UnlinkChains(block);
     clear_jc(block->guest_start, ctx);
-    blocks_by_start_.erase(it);
+    EraseAt(idx);
 }
