@@ -3,12 +3,13 @@
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
 #include "../../peripherals/peripheral_dispatcher.h"
+#include "../../cpu/emulated_memory.h"
 
 namespace {
 
-/* SA-1110 §6.2.3.1 Zero Bank - memory-controller-decoded read-zero
-   region at PA 0xE0000000+ for D-cache writeback flushing
-   ("writeBackDC" loop reads 8 KB here to evict cache lines). */
+/* SA-1110 Developer's Manual §2.4 Figure 2-3 and SA-1100 Technical
+   Reference Manual §2.4 Figure 2-3: Zeros Bank, 128 Mbyte at PA
+   0xE0000000, reads return zero, writes have no effect. */
 
 class Sa11xxZeroBank : public Peripheral {
 public:
@@ -20,10 +21,12 @@ public:
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);
+        emu_.Get<EmulatedMemory>().AddRegion(
+            MmioBase(), EmulatedMemory::PAGE_SIZE, PAGE_READONLY, MmioSize());
     }
 
     uint32_t MmioBase() const override { return 0xE0000000u; }
-    uint32_t MmioSize() const override { return 0x01000000u; }
+    uint32_t MmioSize() const override { return 0x08000000u; }
 
     uint8_t  ReadByte (uint32_t)              override { return 0; }
     uint16_t ReadHalf (uint32_t)              override { return 0; }
