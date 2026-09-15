@@ -1,4 +1,5 @@
 #include "msm8255_clock_rates.h"
+#include "msm8255_clock_reset.h"
 #include "msm8255_oncrpc_codec.h"
 #include "msm8255_rpc_server.h"
 #include "msm8255_rpc_server_registry.h"
@@ -20,6 +21,7 @@ constexpr uint32_t kClkProg = 0x3000000Fu;
 constexpr uint32_t kClkVers = 0x00030001u;
 constexpr uint32_t kClkCid  = 3u;
 
+constexpr uint32_t kProcClockReset     = 2u;
 constexpr uint32_t kProcClockEnable    = 5u;
 constexpr uint32_t kProcClockDisable   = 6u;
 constexpr uint32_t kProcClockIsEnabled = 8u;
@@ -228,6 +230,15 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
                                         kClockResultWords);
     }
 
+    if (call.proc == kProcClockReset) {
+        codec.RequireCallBytes(*this, call.proc, size, kClockPayloadBytes);
+        emu_.Get<Msm8255ClockReset>().Reset(
+            CheckedClock(Be32(mem.ReadWord(call.body + kArg0Off))));
+        return codec.WriteAcceptedReply(out_pa, out_cap, self_pid, kClkCid,
+                                        peer_pid, peer_cid, call.xid, nullptr,
+                                        kClockResultWords);
+    }
+
     if (call.proc == kProcClockIsEnabled) {
         codec.RequireCallBytes(*this, call.proc, size, kClockPayloadBytes);
         const uint32_t results[kResultWords] = {
@@ -248,9 +259,16 @@ uint32_t Msm8255ClkregimRemoteServer::AnswerCall(
     }
 
     if (call.proc != kProcConfigMdhClk && call.proc != kProcSelClkFreqHz) {
+        if (size >= kClockPayloadBytes) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 clkregim remote server: rpc procedure %u with a "
+                "%u-byte payload carrying first argument %u is not modeled",
+                call.proc, size,
+                Be32(mem.ReadWord(call.body + kArg0Off)));
+        }
         emu_.Get<Fatal>().Die(
             "msm8255 clkregim remote server: rpc procedure %u with a %u-byte "
-            "payload is not modeled", call.proc, size);
+            "payload carrying no argument is not modeled", call.proc, size);
     }
     codec.RequireCallBytes(*this, call.proc, size, kThreeArgPayloadBytes);
 
