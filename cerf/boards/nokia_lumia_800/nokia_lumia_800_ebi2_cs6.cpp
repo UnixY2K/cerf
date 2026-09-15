@@ -18,7 +18,8 @@ constexpr uint32_t kRegLatch017C = 0x17Cu;
 constexpr uint32_t kRegProbe01AA = 0x1AAu;
 constexpr uint32_t kRegLatch01B0 = 0x1B0u;
 
-constexpr uint8_t kProbe01AAStub = 0xFFu;
+constexpr uint8_t  kProbe01AAStub     = 0xFFu;
+constexpr uint16_t kProbe01AAStubHalf = 0xFFFFu;
 
 class NokiaLumia800Ebi2Cs6 : public Peripheral {
 public:
@@ -40,6 +41,13 @@ public:
             HaltUnsupportedAccess("ReadByte", addr, 0);
         }
         return kProbe01AAStub;
+    }
+
+    uint16_t ReadHalf(uint32_t addr) override {
+        if (addr - MmioBase() != kRegProbe01AA) {
+            HaltUnsupportedAccess("ReadHalf", addr, 0);
+        }
+        return kProbe01AAStubHalf;
     }
 
     void WriteHalf(uint32_t addr, uint16_t value) override {
