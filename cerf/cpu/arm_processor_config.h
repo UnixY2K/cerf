@@ -29,17 +29,11 @@ public:
        the JIT to advance ArmCpuState::guest_cycle_counter inline. */
     virtual uint16_t CycleCostFor(const DecodedInsn& d) const;
 
-    /* Guest CPU clock divided by OST clock. SA-1110 §9.4.1: OSCR =
-       3.6864 MHz; SA-1110 typical core clock = 206 MHz. Other SoCs
-       override per their own datasheet. Used by the OS Timer to
-       translate (cycles − baseline) → OSCR ticks. */
+    /* SA-1110 Dev Man §8.2 Table 8-1: CCF 01011 = 56 x the 3.6864-MHz
+       crystal; §9.4.1: the OSCR increments on that crystal's rising edges. */
     virtual uint32_t CpuToOscrDivider()           const { return 56; }
 
-    /* CPU cycles per external-crystal (CKIH-like) tick. Used by
-       peripherals that select an external-crystal clock source. */
     virtual uint32_t CpuToHighfreqClockDivider()  const { return 1; }
-
-    /* CPU cycles per low-frequency-reference (CKIL-like 32 kHz) tick. */
     virtual uint32_t CpuToLowfreqClockDivider()   const { return 1; }
 
     virtual uint32_t CpuClockHz()                 const = 0;

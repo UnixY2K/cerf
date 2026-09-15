@@ -94,6 +94,9 @@ struct ArmCpuState {
     uint32_t    ldrex_monitor_armed;
 
     uint32_t    guest_cycle_counter;
+    uint32_t    guest_cycle_deadline;
+    uint32_t    guest_cycle_hi;
+    uint32_t    guest_cycle_folded;
     uint32_t    irq_interrupt_pending;
     uint32_t    reset_pending;
     uint32_t    deep_sleep;

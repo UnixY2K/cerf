@@ -1,4 +1,4 @@
-#include "../os_timer.h"
+#include "../intel_os_timer_impl.h"
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
@@ -9,9 +9,13 @@ namespace {
 /* SA-1110 §9.2.1.1 Table 9-1: IP26..29 = OSMR0..3 match. */
 constexpr uint32_t kIntcOst0Bit = 26u;
 
-class Sa11xxOsTimer : public OsTimer {
+/* SA-1110 §9.4.1: the OSCR "increments on rising edges of the 3.6864-MHz
+   clock". */
+constexpr uint32_t kOscrHz = 3686400u;
+
+class Sa11xxOsTimer : public IntelOsTimerBase<kOscrHz> {
 public:
-    using OsTimer::OsTimer;
+    using IntelOsTimerBase<kOscrHz>::IntelOsTimerBase;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();

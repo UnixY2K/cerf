@@ -321,7 +321,7 @@ This repositroy includes [cerf.cx](https://cerf.cx) source code at ``docs/websit
           ✅ Device Emulator: sound no longer stutters<br/>
           ✅ Device Emulator: Windows Mobile 2003 SE no longer freezes<br/>
           ✅ Casio Toricomail: fixed rendering crashes<br/>
-          ✅ Ford Sync 2: Rendering crash fixes &amp; navigation maps (by @cavenderbi)</p>
+          ✅ Ford Sync 2: Rendering massive improvements &amp; navigation maps (by @cavenderbi)</p>
         <p><b>💿 Emulator</b><br/>
           🆕 Configurable display colour depth for Guest Additions and Device Emulator<br/>
           🆕 Bundled CompactFlash cards can be auto-inserted at launch<br/>
@@ -330,7 +330,8 @@ This repositroy includes [cerf.cx](https://cerf.cx) source code at ``docs/websit
           🆕 Shutdown dialog has received reboot options<br/>
           🆕 Host key is now reassignable<br/>
           ✅ ARM JIT and JIT core full rewrite. ARM JIT/peripherals massive performance optimizations<br/>
-          ✅ Media instructions for Zune 30 - music is now playable</p>
+          ✅ Media instructions for Zune 30 - music is now playable<br/>
+          ✅ System clock improvements</p>
         <p><b>🚀 Launcher</b><br/>
           🆕 GitHub issues window (Bugs&amp;Requests)<br/>
           🆕 Copyright issues contact window<br/>

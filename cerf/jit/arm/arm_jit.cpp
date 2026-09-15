@@ -13,6 +13,7 @@
 #include "../../socs/guest_cpu_reset.h"
 #include "../../host/guest_deep_sleep.h"
 #include "../../host/guest_power_notifier.h"
+#include "../guest_cycle_clock.h"
 #include "../jit_code_arena.h"
 #include "arm_block_compiler.h"
 #include "arm_cpu.h"
@@ -101,6 +102,7 @@ void ArmJit::OnReady() {
     cache_     = &emu_.Get<ArmTranslationCache>();
     compiler_  = &emu_.Get<ArmBlockCompiler>();
     channel_   = &emu_.Get<ArmInterruptChannel>();
+    clock_     = &emu_.Get<GuestCycleClock>();
 
     BootMode&      boot       = emu_.Get<BootMode>();
     const uint32_t cold_entry = boot.ColdEntryPa();
@@ -141,6 +143,8 @@ void ArmJit::Run() {
         cache_->Flush();
         return;
     }
+
+    clock_->OnDispatch();
 
     /* QEMU accel/tcg/cpu-exec.c cpu_handle_interrupt: "Clear the interrupt
        flag now since we're processing cpu->interrupt_request and
@@ -189,6 +193,7 @@ void ArmJit::SetHostChainExit(bool requested) {
 
 void ArmJit::SetInterruptPending()   { channel_->SetInterruptPending(); }
 void ArmJit::ClearInterruptPending() { channel_->ClearInterruptPending(); }
+void ArmJit::SetIdleWake(bool level) { channel_->SetIdleWake(level); }
 
 void ArmJit::EnterDeepSleep() {
     /* SA-1110 §9.5.3: PMCR.SF halts the CPU until a wake reset. */
@@ -224,7 +229,10 @@ void ArmJit::PrintFatalDump() {
 }
 
 void ArmJit::SaveCpuState(StateWriter& w)    { cpu_->SaveState(w); }
-void ArmJit::RestoreCpuState(StateReader& r) { cpu_->RestoreState(r); }
+void ArmJit::RestoreCpuState(StateReader& r) {
+    cpu_->RestoreState(r);
+    clock_->OnCyclesRestored();
+}
 void ArmJit::SaveMmuState(StateWriter& w)    { mmu_->SaveState(w); }
 void ArmJit::RestoreMmuState(StateReader& r) { mmu_->RestoreState(r); }
 

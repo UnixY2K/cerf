@@ -53,6 +53,8 @@ in per-core strategy services that `GetSoc()` selects. Per-SoC variation is
 never an `if (soc == X)` branch in the JIT body.
 
 - `cerf/jit/`, [agent_docs/jit.md](jit.md)
+- the guest cycle clock every timer derives from:
+  [agent_docs/timers_clocks.md](timers_clocks.md)
 
 ## Per-chip / per-board / per-part strategies
 

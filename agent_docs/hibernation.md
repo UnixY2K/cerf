@@ -126,10 +126,9 @@ state, and a pause of one does NOT pause the other:
      across a cv wait / sleep / thread join. Acquire it, do the state touch,
      release it, then wait.
 
-`VirtualTimerList::ExpiryLoop` (`cerf/core/virtual_timer_list.cpp`) wraps its
-`RunExpired()` pass in a worker section. Every peripheral that owns a worker
-thread does the same. A peripheral whose state advances only on the JIT thread
-has no worker and needs no `WorkerSection`.
+Every peripheral that owns a worker thread wraps its state touch in a worker
+section. A peripheral whose state advances only on the JIT thread - every timer
+on the guest cycle clock is one - has no worker and needs no `WorkerSection`.
 
 ## The peripheral contract - MANDATORY when you create or modify a peripheral
 
@@ -194,15 +193,12 @@ freeze model.
   sub-devices like a companion-ASIC `Ps2Mouse`) are not auto-enumerated → they need
   an explicit serialization walk + card-presence recreation
   (`PcmciaCardCatalog::Create(id, binding)`).
-- **Rebase timers** - timers anchored to a guest-cycle baseline, to a
-  virtual-clock-ns counter, or to a wall clock - **never
-  raw-serialize a `std::chrono::time_point` or a guest-cycle baseline.** Save
-  the live counter. On restore, re-anchor the baseline so the counter resumes
-  continuously. Guest-cycle → `baseline = (saved_count, GuestCycles())`, and
-  per-channel match anchors stay valid (same counter domain). A
-  virtual-clock-ns timer saves a computed live counter, because CERF does
-  not serialize `VirtualClock`. Wall-clock →
-  `period_start_ = Clock::now()`.
+- **Rebase timers** - a timer anchored to a baseline **never raw-serializes
+  that baseline or a `std::chrono::time_point`.** It saves the live counter,
+  re-anchors at the restored guest time, re-arms its events and re-drives its
+  level from `PostRestore` - see
+  [agent_docs/timers_clocks.md](timers_clocks.md) § Hibernation and deep sleep.
+  A host-clock source re-anchors to `Clock::now()`.
 - **In-flight host coupling** resets on restore, because no host sink / pen /
   socket exists after a restore. In RestoreState or PostRestore, clear audio-DMA
   `in_flight`/`tx_running`, touch `pen_down`/`pen_timer_enabled`, and the

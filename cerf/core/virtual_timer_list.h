@@ -47,7 +47,6 @@ private:
     std::mutex  mtx_;
     std::thread thread_;
     std::atomic<bool>       stop_{false};
-    std::atomic<uint32_t>   wake_gen_{0};
     void*                   timer_      = nullptr;
     void*                   wake_event_ = nullptr;
 

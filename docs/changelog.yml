@@ -12,7 +12,7 @@
       Device Emulator: sound no longer stutters
       Device Emulator: Windows Mobile 2003 SE no longer freezes
       Casio Toricomail: fixed rendering crashes
-      Ford Sync 2: Rendering crash fixes & navigation maps (by @cavenderbi)
+      Ford Sync 2: Rendering massive improvements & navigation maps (by @cavenderbi)
   emulator:
     new: |
       Configurable display colour depth for Guest Additions and Device Emulator
@@ -24,6 +24,7 @@
     fixed: |
       ARM JIT and JIT core full rewrite. ARM JIT/peripherals massive performance optimizations
       Media instructions for Zune 30 - music is now playable
+      System clock improvements
   launcher:
     new: |
       GitHub issues window (Bugs&Requests)

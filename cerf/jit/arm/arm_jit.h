@@ -18,6 +18,7 @@ class ArmMmu;
 class ArmMmuProbe;
 class ArmPageWalker;
 class ArmTranslationCache;
+class GuestCycleClock;
 
 class ArmJit : public GuestEngine {
 public:
@@ -32,6 +33,7 @@ public:
 
     void SetInterruptPending();
     void ClearInterruptPending();
+    void SetIdleWake(bool level);
 
     static void __cdecl Dispatch(void*        native_pc,
                                  ArmCpuState* cpu_state,
@@ -77,4 +79,5 @@ private:
     ArmTranslationCache* cache_    = nullptr;
     ArmBlockCompiler*    compiler_ = nullptr;
     ArmInterruptChannel* channel_  = nullptr;
+    GuestCycleClock*     clock_    = nullptr;
 };

@@ -43,6 +43,7 @@ The following pages are authoritative project knowledge; their full contents are
 - **[agent_docs/workflow_examples.md](agent_docs/workflow_examples.md)** - proven investigation recipes.
 - **[agent_docs/subsystems.md](agent_docs/subsystems.md)** - what CERF owns.
 - **[agent_docs/jit.md](agent_docs/jit.md)** - the JIT.
+- **[agent_docs/timers_clocks.md](agent_docs/timers_clocks.md)** - the guest cycle clock, every timer on it, and what a Windows CE tick handler does to a timer.
 - **[agent_docs/rules.md](agent_docs/rules.md)** - project rules.
 - **[agent_docs/code_style.md](agent_docs/code_style.md)** - how to write code.
 - **[agent_docs/debugging.md](agent_docs/debugging.md)** - debugging.

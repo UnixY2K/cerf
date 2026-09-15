@@ -18,9 +18,6 @@ public:
        proc-sa1100.S:277 sa1110 = 0x6901b110 mask 0xfffffff0. */
     uint32_t Midr() const override { return 0x6901B110u; }
     uint32_t Ctr()  const override { return 0x6901B110u; }
-
-    /* 206 MHz core / 3.6864 MHz OSCR (SA-1110 Dev Manual §9.4.1). */
-    uint32_t CpuClockHz() const override { return 206000000u; }
 };
 
 }  /* namespace */

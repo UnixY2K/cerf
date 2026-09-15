@@ -39,6 +39,21 @@ function ConvertTo-WindowsPath {
     [IO.Path]::GetFullPath($p)
 }
 
+function ConvertTo-RunnerArgToken {
+    param([Parameter(Mandatory = $true)][string]$Arg)
+    if ($Arg -notmatch '[\s"]') { return $Arg }
+    $out = '"'
+    $bs  = 0
+    foreach ($ch in $Arg.ToCharArray()) {
+        if ($ch -eq '\') { $bs++; continue }
+        if ($ch -eq '"') { $out += ('\' * ($bs * 2 + 1)) + '"'; $bs = 0; continue }
+        $out += ('\' * $bs) + $ch
+        $bs = 0
+    }
+    $out += ('\' * ($bs * 2)) + '"'
+    return $out
+}
+
 function Format-RunnerSize {
     param([Parameter(Mandatory = $true)][long]$Bytes)
     if ($Bytes -ge 1MB) { return "{0:N1} MB" -f ($Bytes / 1MB) }
@@ -154,7 +169,7 @@ if (-not (Test-Path $exePath)) {
     Stop-Runner $RunnerExitMissing
 }
 
-$argLine = ($forward | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
+$argLine = ($forward | ForEach-Object { ConvertTo-RunnerArgToken $_ }) -join ' '
 
 $runStart = Get-Date
 $stopwatch = [Diagnostics.Stopwatch]::StartNew()

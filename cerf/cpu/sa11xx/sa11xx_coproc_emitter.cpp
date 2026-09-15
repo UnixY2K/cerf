@@ -38,9 +38,10 @@ public:
            0x80020000 here - without the intercept the shared dispatch
            fatals on c15. */
         if (d->crn == 15) {
-            /* MCR p15, 0, Rd, c15, c2, 2 - SA-1110 "Wait for Interrupt"
-               (Dev Man §5.3.4). */
-            if (!d->l && d->crm == 2 && d->cp == 2 && d->cp_opc == 0) {
+            /* SA-1110 Dev Man §9.5.2.1: idle mode is entered by "mcr p15, 0, r0,
+               c15, c2, 2" (disable clock switching), an uncached load, then
+               "mcr p15, 0, r0, c15, c8, 2" - the wait for interrupt. */
+            if (!d->l && d->crm == 8 && d->cp == 2 && d->cp_opc == 0) {
                 using namespace x86;
                 EmitMovRegImm32(cursor, kEcx,
                     static_cast<uint32_t>(reinterpret_cast<uintptr_t>(

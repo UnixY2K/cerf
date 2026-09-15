@@ -2,7 +2,6 @@
 
 #include "../core/cerf_emulator.h"
 #include "../core/fatal.h"
-#include "../core/host_thread_priority.h"
 #include "../core/log.h"
 #include "../core/rate_probe.h"
 #include "../core/virtual_clock.h"
@@ -86,7 +85,6 @@ void JitRunner::Resume() {
 }
 
 void JitRunner::RunLoop() {
-    emu_.Get<HostThreadPriority>().Elevate(HostThreadRole::GuestCpu);
     LOG(Jit, "JitRunner::RunLoop: entered, resolving engine\n");
     /* Resolve the guest engine lazily on the JIT thread - first Get<T> walks the
        OnReady dependency chain. A Get<> in JitRunner::OnReady is service

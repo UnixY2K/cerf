@@ -22,9 +22,6 @@ public:
 
     /* PXA255 manual Table 3-20. */
     uint32_t CpuClockHz() const override { return 398131200u; }
-    uint32_t CpuToOscrDivider() const override { return 108u; }
-    uint32_t CpuToHighfreqClockDivider() const override { return 108u; }
-    uint32_t CpuToLowfreqClockDivider() const override { return 12150u; }
 };
 
 }
