@@ -2,6 +2,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../cpu/physical_bus.h"
+#include "../../jit/guest_cycle_clock.h"
 #include "../../peripherals/peripheral_base.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
@@ -23,6 +24,7 @@ constexpr uint32_t kChannelCount = 16u;
    DMOV_ADDR(off, ch) = off + (ch << 2) inside one security domain. */
 constexpr uint32_t kRegCmdPtr      = 0x000u;
 constexpr uint32_t kRegRslt        = 0x040u;
+constexpr uint32_t kRegFlush0      = 0x080u;
 constexpr uint32_t kRegStatus      = 0x200u;
 constexpr uint32_t kRegRsltConf    = 0x300u;
 constexpr uint32_t kRegIsr         = 0x380u;
@@ -30,6 +32,7 @@ constexpr uint32_t kRegIsr         = 0x380u;
 /* Linux arch/arm/mach-msm include mach dma.h: DMOV_RSLT_VALID, _ERROR,
    _FLUSH, _DONE and _USER. */
 constexpr uint32_t kRsltValid = 1u << 31;
+constexpr uint32_t kRsltFlush = 1u << 2;
 constexpr uint32_t kRsltDone  = 1u << 1;
 
 /* Linux arch/arm/mach-msm include mach dma.h: DMOV_STATUS_CMD_PTR_RDY,
@@ -38,9 +41,11 @@ constexpr uint32_t kStatusCmdPtrRdy   = 1u << 0;
 constexpr uint32_t kStatusRsltValid   = 1u << 1;
 constexpr uint32_t kStatusRsltCountSh = 29u;
 
-/* Linux arch/arm/mach-msm include mach dma.h: DMOV_RSLT_CONF_IRQ_EN. */
-constexpr uint32_t kRsltConfIrqEn  = 1u << 0;
-constexpr uint32_t kRsltConfServed = kRsltConfIrqEn;
+/* Linux arch/arm/mach-msm include mach dma.h: DMOV_RSLT_CONF_IRQ_EN and
+   DMOV_RSLT_CONF_FORCE_FLUSH_RSLT. */
+constexpr uint32_t kRsltConfIrqEn          = 1u << 0;
+constexpr uint32_t kRsltConfForceFlushRslt = 1u << 1;
+constexpr uint32_t kRsltConfServed = kRsltConfIrqEn | kRsltConfForceFlushRslt;
 
 /* Linux arch/arm/mach-msm include mach dma.h: DMOV_CMD_ADDR is addr >> 3 and
    DMOV_CMD_LIST, DMOV_CMD_PTR_LIST, DMOV_CMD_INPUT_CFG and DMOV_CMD_OUTPUT_CFG
@@ -80,6 +85,7 @@ public:
     }
 
     void OnReady() override {
+        done_ = emu_.Get<GuestCycleClock>().Add([this] { CompleteDue(); });
         ResetState();
         emu_.Get<GuestCpuReset>().RegisterResetListener(
             [this](ResetLineKind) { ResetState(); });
@@ -101,6 +107,7 @@ public:
         std::lock_guard<std::mutex> g(lock_);
         if (reg == kRegStatus)   return StatusLocked(ch);
         if (reg == kRegRslt)     return PopResultLocked(ch);
+        if (reg == kRegRsltConf) return chans_[ch].rslt_conf;
         HaltUnsupportedAccess("ReadWord", addr, 0);
     }
 
@@ -117,8 +124,31 @@ public:
             PublishLineLocked();
             return;
         }
+        if (reg == kRegFlush0) {
+            if (value != 0u) {
+                emu_.Get<Fatal>().Die(
+                    "msm8255 dmov: channel %u took a flush of type 0x%08X, and "
+                    "no source states how this engine's flush type changes what "
+                    "it does to the transfer in flight", ch, value);
+            }
+            std::lock_guard<std::mutex> g(lock_);
+            Channel& c = chans_[ch];
+            /* Linux drivers dma qcom qcom_adm.c: adm_dma_remove terminates every
+               channel, including ones that never ran. */
+            if (!c.in_flight) return;
+            c.in_flight = false;
+            c.cmd_ptr   = 0u;
+            if ((c.rslt_conf & kRsltConfForceFlushRslt) == 0u) {
+                emu_.Get<Fatal>().Die(
+                    "msm8255 dmov: channel %u took a flush with FORCE_FLUSH_RSLT "
+                    "clear, and what this engine reports for a terminated "
+                    "transfer without it is not modeled", ch);
+            }
+            PushResultLocked(ch, kRsltValid | kRsltFlush);
+            return;
+        }
         if (reg == kRegCmdPtr) {
-            RunTransfer(ch, value);
+            StartTransfer(ch, value);
             return;
         }
         HaltUnsupportedAccess("WriteWord", addr, value);
@@ -130,6 +160,8 @@ public:
             w.Write<uint32_t>(c.rslt_conf);
             w.Write<uint32_t>(c.count);
             w.Write<uint32_t>(c.head);
+            w.Write<uint32_t>(c.cmd_ptr);
+            w.Write<uint32_t>(c.in_flight ? 1u : 0u);
             for (uint32_t v : c.fifo) w.Write<uint32_t>(v);
         }
     }
@@ -140,17 +172,26 @@ public:
             r.Read(c.rslt_conf);
             r.Read(c.count);
             r.Read(c.head);
+            r.Read(c.cmd_ptr);
+            uint32_t in_flight = 0u;
+            r.Read(in_flight);
+            c.in_flight = in_flight != 0u;
             for (uint32_t& v : c.fifo) r.Read(v);
             if (c.count > kRsltFifoDepth || c.head >= kRsltFifoDepth) {
                 emu_.Get<Fatal>().Die(
                     "msm8255 dmov: restored channel result fifo carries count %u "
                     "head %u past its depth %u", c.count, c.head, kRsltFifoDepth);
             }
+            if (c.in_flight) RequireModeledCmdPtr(c.cmd_ptr);
         }
     }
 
     void PostRestore() override {
         std::lock_guard<std::mutex> g(lock_);
+        auto& clock = emu_.Get<GuestCycleClock>();
+        for (const Channel& c : chans_) {
+            if (c.in_flight) { clock.Arm(done_, clock.Cycles()); break; }
+        }
         PublishLineLocked();
     }
 
@@ -160,6 +201,8 @@ private:
         uint32_t fifo[kRsltFifoDepth] = {};
         uint32_t head  = 0u;
         uint32_t count = 0u;
+        uint32_t cmd_ptr   = 0u;
+        bool     in_flight = false;
     };
 
     static uint32_t RegOf(uint32_t off) { return off & ~0x3Cu; }
@@ -169,6 +212,7 @@ private:
         const uint32_t ch = (off & 0x3Cu) / 4u;
         const uint32_t reg = RegOf(off);
         const bool known = reg == kRegCmdPtr || reg == kRegRslt ||
+                           reg == kRegFlush0 ||
                            reg == kRegStatus || reg == kRegRsltConf;
         return known ? ch : kChannelCount;
     }
@@ -291,20 +335,7 @@ private:
             "marker", kMaxCommands);
     }
 
-    struct NestGuard {
-        uint32_t& depth;
-        explicit NestGuard(uint32_t& d) : depth(d) { ++depth; }
-        ~NestGuard() { --depth; }
-    };
-
-    void RunTransfer(uint32_t ch, uint32_t value) {
-        if (nest_ != 0u) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 dmov: a transfer moved into this window's own command "
-                "pointer for channel %u, and a transfer that issues another "
-                "transfer is not modeled", ch);
-        }
-        NestGuard nest(nest_);
+    void RequireModeledCmdPtr(uint32_t value) {
         const uint32_t type = (value >> kCmdPtrTypeShift) & kCmdPtrTypeMask;
         if (type != kCmdPtrTypeList || (value >> 31) != 0u) {
             emu_.Get<Fatal>().Die(
@@ -312,6 +343,40 @@ private:
                 "31 set to %u, and only a type 0 pointer list with bit 31 clear "
                 "is modeled", value, type, value >> 31);
         }
+    }
+
+    void StartTransfer(uint32_t ch, uint32_t value) {
+        RequireModeledCmdPtr(value);
+        std::lock_guard<std::mutex> g(lock_);
+        Channel& c = chans_[ch];
+        if (c.in_flight) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 dmov: channel %u took a command pointer while one was "
+                "still in flight, and the depth this engine queues them to is "
+                "not modeled", ch);
+        }
+        c.cmd_ptr   = value;
+        c.in_flight = true;
+        auto& clock = emu_.Get<GuestCycleClock>();
+        clock.Arm(done_, clock.Cycles());
+    }
+
+    void CompleteDue() {
+        for (uint32_t ch = 0; ch < kChannelCount; ++ch) {
+            uint32_t value;
+            {
+                std::lock_guard<std::mutex> g(lock_);
+                if (!chans_[ch].in_flight) continue;
+                value = chans_[ch].cmd_ptr;
+            }
+            RunTransfer(ch, value);
+            std::lock_guard<std::mutex> g(lock_);
+            chans_[ch].in_flight = false;
+            chans_[ch].cmd_ptr   = 0u;
+        }
+    }
+
+    void RunTransfer(uint32_t ch, uint32_t value) {
         uint32_t list = (value & kPtrAddrMask) << 3;
         for (uint32_t i = 0; i < kMaxPointers; ++i) {
             const uint32_t entry = BusRead(list);
@@ -336,9 +401,11 @@ private:
     void ResetState() {
         std::lock_guard<std::mutex> g(lock_);
         for (Channel& c : chans_) c = Channel{};
+        emu_.Get<GuestCycleClock>().Disarm(done_);
+        PublishLineLocked();
     }
 
-    uint32_t   nest_ = 0u;
+    GuestCycleClock::Event* done_ = nullptr;
     std::mutex lock_;
     Channel    chans_[kChannelCount];
 };
