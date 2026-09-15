@@ -6,10 +6,6 @@
 #include <atomic>
 #include <cstdint>
 
-/* Linux arch/arm/mach-msm gpiomux-v1.h: GPIOMUX_NGPIOS is 182 under
-   CONFIG_ARCH_MSM7X30. */
-inline constexpr uint32_t kMsm8255GpioPinCount = 182u;
-
 constexpr bool Msm8255GpioBanksAddressablePins(const Msm8255GpioBank* banks,
                                                uint32_t count) {
     for (uint32_t i = 0; i < count; ++i) {
