@@ -18,6 +18,7 @@ namespace cerf_msm8255_sdcc_detail {
 
 constexpr uint32_t kPower    = 0x000u;
 constexpr uint32_t kClock    = 0x004u;
+constexpr uint32_t kArgument = 0x008u;
 constexpr uint32_t kCommand  = 0x00Cu;
 constexpr uint32_t kDataCtrl = 0x02Cu;
 constexpr uint32_t kStatus   = 0x034u;
@@ -25,7 +26,16 @@ constexpr uint32_t kClear    = 0x038u;
 constexpr uint32_t kMask0    = 0x03Cu;
 constexpr uint32_t kMask1    = 0x040u;
 
-constexpr uint32_t kStatusIdle = 0u;
+constexpr uint32_t kCmdIndex    = 0x0000003Fu;
+constexpr uint32_t kCmdResponse = 1u << 6;
+constexpr uint32_t kCmdEnable   = 1u << 10;
+
+constexpr uint32_t kCmdModelled = kCmdIndex | kCmdResponse | kCmdEnable;
+
+constexpr uint32_t kStatusCmdTimeout = 1u << 2;
+constexpr uint32_t kStatusCmdSent    = 1u << 7;
+
+constexpr uint32_t kStatusLatchable = kStatusCmdTimeout | kStatusCmdSent;
 
 constexpr uint32_t kClearStaticMask =
     (1u << 0) | (1u << 1) | (1u << 2) | (1u << 3) | (1u << 4) | (1u << 5) |
@@ -37,6 +47,8 @@ constexpr uint32_t kQuiescent = 0u;
 constexpr uint32_t kPowerWritable = 0x00000041u;
 constexpr uint32_t kClockWritable = 0x0000FF00u;
 constexpr uint32_t kMaskWritable  = 0x1FFFFFFFu;
+
+constexpr uint32_t kMaskStorable = kMaskWritable & ~kStatusLatchable;
 
 constexpr uint32_t kUngroundedPowerOn = 0u;
 
@@ -67,7 +79,7 @@ public:
         case kClock: return Load(clock_);
         case kMask0:  return Load(mask0_);
         case kMask1:  return Load(mask1_);
-        case kStatus: return kStatusIdle;
+        case kStatus: return Load(status_);
         default:      break;
         }
         HaltUnsupportedAccess("ReadWord", addr, 0u);
@@ -88,18 +100,32 @@ public:
             }
             break;
         case kMask0:
-            if ((value & ~kMaskWritable) == 0u) {
+            if ((value & ~kMaskStorable) == 0u) {
                 Store(mask0_, value);
                 return;
             }
             break;
         case kMask1:
-            if ((value & ~kMaskWritable) == 0u) {
+            if ((value & ~kMaskStorable) == 0u) {
                 Store(mask1_, value);
                 return;
             }
             break;
+        case kArgument:
+            Store(argument_, value);
+            return;
         case kCommand:
+            if (value == kQuiescent) {
+                return;
+            }
+            if ((value & kCmdEnable) != 0u && (value & ~kCmdModelled) == 0u) {
+                const uint32_t event = (value & kCmdResponse) != 0u
+                                           ? kStatusCmdTimeout
+                                           : kStatusCmdSent;
+                Store(status_, Load(status_) | event);
+                return;
+            }
+            break;
         case kDataCtrl:
             if (value == kQuiescent) {
                 return;
@@ -107,6 +133,7 @@ public:
             break;
         case kClear:
             if ((value & ~kClearStaticMask) == 0u) {
+                Store(status_, Load(status_) & ~value);
                 return;
             }
             break;
@@ -121,13 +148,17 @@ public:
         w.Write<uint32_t>(Load(clock_));
         w.Write<uint32_t>(Load(mask0_));
         w.Write<uint32_t>(Load(mask1_));
+        w.Write<uint32_t>(Load(argument_));
+        w.Write<uint32_t>(Load(status_));
     }
 
     void RestoreState(StateReader& r) override {
         RestoreField(r, power_, kPowerWritable, kPower);
         RestoreField(r, clock_, kClockWritable, kClock);
-        RestoreField(r, mask0_, kMaskWritable, kMask0);
-        RestoreField(r, mask1_, kMaskWritable, kMask1);
+        RestoreField(r, mask0_, kMaskStorable, kMask0);
+        RestoreField(r, mask1_, kMaskStorable, kMask1);
+        RestoreField(r, argument_, 0xFFFFFFFFu, kArgument);
+        RestoreField(r, status_, kStatusLatchable, kStatus);
     }
 
 private:
@@ -144,6 +175,8 @@ private:
         Store(clock_, kUngroundedPowerOn);
         Store(mask0_, kUngroundedPowerOn);
         Store(mask1_, kUngroundedPowerOn);
+        Store(argument_, kUngroundedPowerOn);
+        Store(status_, 0u);
     }
 
     void RestoreField(StateReader& r, std::atomic<uint32_t>& reg,
@@ -162,6 +195,8 @@ private:
     std::atomic<uint32_t> clock_{kUngroundedPowerOn};
     std::atomic<uint32_t> mask0_{kUngroundedPowerOn};
     std::atomic<uint32_t> mask1_{kUngroundedPowerOn};
+    std::atomic<uint32_t> argument_{kUngroundedPowerOn};
+    std::atomic<uint32_t> status_{0};
 };
 
 }  // namespace cerf_msm8255_sdcc_detail
