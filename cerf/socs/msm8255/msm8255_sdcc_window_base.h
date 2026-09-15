@@ -20,9 +20,12 @@ constexpr uint32_t kPower    = 0x000u;
 constexpr uint32_t kClock    = 0x004u;
 constexpr uint32_t kCommand  = 0x00Cu;
 constexpr uint32_t kDataCtrl = 0x02Cu;
+constexpr uint32_t kStatus   = 0x034u;
 constexpr uint32_t kClear    = 0x038u;
 constexpr uint32_t kMask0    = 0x03Cu;
 constexpr uint32_t kMask1    = 0x040u;
+
+constexpr uint32_t kStatusIdle = 0u;
 
 constexpr uint32_t kClearStaticMask =
     (1u << 0) | (1u << 1) | (1u << 2) | (1u << 3) | (1u << 4) | (1u << 5) |
@@ -62,9 +65,10 @@ public:
         switch (addr - kBase) {
         case kPower: return Load(power_);
         case kClock: return Load(clock_);
-        case kMask0: return Load(mask0_);
-        case kMask1: return Load(mask1_);
-        default:     break;
+        case kMask0:  return Load(mask0_);
+        case kMask1:  return Load(mask1_);
+        case kStatus: return kStatusIdle;
+        default:      break;
         }
         HaltUnsupportedAccess("ReadWord", addr, 0u);
     }
