@@ -92,6 +92,12 @@
   background: var(--cerf-tabs-bg);
 }
 
+body[data-md-color-scheme="default"] .md-nav--primary .md-nav__title[for="__drawer"],
+body[data-md-color-scheme="default"] .md-nav__source {
+  background-color: var(--cerf-hairline);
+  color: var(--cerf-text-soft);
+}
+
 .md-search__form {
   border-radius: 100px;
   background: var(--cerf-glass-bg);
