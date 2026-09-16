@@ -15,7 +15,9 @@ PROJECT_DIRS = ("cerf/", "ce_apps/", "launcher/", "tools/", "docs/", ".claude/")
 CITATION_RE = re.compile(
     r"\bARM ARM\b|§"
     r"|\bTable\s+[A-Z]?\d|\bFig(?:ure)?\.?\s+[A-Z]?\d"
-    r"|(?i:\bch\.\s*\d|\bchapter\s+\d|\bpage\s+\d|\bpg\.?\s*\d|\bp\.?\s*\d{3,})"
+    r"|(?i:\bch\.\s*[A-Z]?\d|\bchapter\s+[A-Z]?\d"
+    r"|\bpage\s+[A-Z]?\d|\bpg\.?\s*[A-Z]?\d"
+    r"|\bp\.\s*[A-Z]?\d|\bp\s*\d{3,})"
     r"|(?i:\b(?:ddi|ihi|den|prd|arm)\s*0*\d{3,}|\bjesd\s*\d|\brfc\s*\d)"
     r"|\b[A-Z]\d+\.\d+(?:\.\d+)+\b"
     r"|(?i:\bvol(?:ume)?\.?\s*\d)"
