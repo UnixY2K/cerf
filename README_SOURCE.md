@@ -134,6 +134,8 @@ run_claude.cmd
 
 {changelog}
 
+---
+
 CERF was known earlier as [WCECL](https://github.com/dz333n/wcecl) (2019)
 
 [**MIT License**](LICENSE) | [**Third-Party Notices**](THIRD_PARTY_NOTICES.md)<br/>
