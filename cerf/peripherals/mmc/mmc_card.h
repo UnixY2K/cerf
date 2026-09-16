@@ -3,6 +3,7 @@
 #include "../../core/service.h"
 
 #include <cstdint>
+#include <vector>
 
 class StateWriter;
 class StateReader;
@@ -21,6 +22,8 @@ public:
 
     virtual MmcCommandResult Command(uint8_t index, uint32_t argument,
                                      uint32_t response[4]) = 0;
+
+    virtual const std::vector<uint8_t>& ReadData() const = 0;
 
     virtual void Reset() = 0;
 

@@ -5,7 +5,8 @@
 
 namespace {
 
-constexpr uint32_t kEmmcSlotIndex = 0u;
+constexpr uint32_t kEmmcSlotIndex  = 0u;
+constexpr uint32_t kSynthesisedSectorCount = 0x01D5C000u;
 
 constexpr SdCardCid kCid = {
     0x00u,
@@ -31,6 +32,8 @@ public:
 
 protected:
     SdCardCid Cid() const override { return kCid; }
+
+    uint32_t SectorCount() const override { return kSynthesisedSectorCount; }
 };
 
 }  // namespace

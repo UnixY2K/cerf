@@ -11,11 +11,12 @@ constexpr uint32_t kSdc4ResetClock = 133u;
 constexpr uint32_t kSdc4SlotIndex  = 3u;
 constexpr uint32_t kSdc4IrqSource0 = 100u;
 constexpr uint32_t kSdc4IrqSource1 = 101u;
+constexpr uint32_t kSdc4Crci       = 13u;
 
 class Msm8255Sdcc4
     : public cerf_msm8255_sdcc_detail::Msm8255SdccWindowBase<
           kSdc4Base, kSdc4Size, kSdc4ResetClock, kSdc4SlotIndex,
-          kSdc4IrqSource0, kSdc4IrqSource1> {
+          kSdc4IrqSource0, kSdc4IrqSource1, kSdc4Crci> {
 public:
     using Msm8255SdccWindowBase::Msm8255SdccWindowBase;
 };

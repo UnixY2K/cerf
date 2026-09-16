@@ -23,6 +23,15 @@ constexpr uint32_t kEraseGrpSize   = 31u;
 constexpr uint32_t kEraseGrpMult   = 31u;
 constexpr uint32_t kR2wFactor      = 4u;
 
+constexpr uint32_t kExtCsdBytes          = 512u;
+constexpr uint32_t kExtCsdRev            = 192u;
+constexpr uint32_t kExtCsdStructure      = 194u;
+constexpr uint32_t kExtCsdCardType       = 196u;
+constexpr uint32_t kExtCsdSecCount       = 212u;
+constexpr uint8_t  kExtCsdRevValue       = 3u;
+constexpr uint8_t  kExtCsdStructureValue = 2u;
+constexpr uint8_t  kExtCsdCardTypeValue  = 1u;
+
 void PutBits(uint32_t out[4], uint32_t start, uint32_t width, uint32_t value) {
     const uint32_t mask  = (width < 32u) ? ((1u << width) - 1u) : 0xFFFFFFFFu;
     const uint32_t off   = 3u - (start / 32u);
@@ -71,6 +80,8 @@ MmcCommandResult EmmcCardBase::Command(uint8_t index, uint32_t argument,
                                        uint32_t response[4]) {
     const MmcState before  = state_;
     const uint16_t arg_rca = static_cast<uint16_t>(argument >> 16);
+
+    read_data_.clear();
 
     switch (index) {
     case kCmdGoIdleState:
@@ -139,9 +150,18 @@ MmcCommandResult EmmcCardBase::Command(uint8_t index, uint32_t argument,
         response[0] = StatusWord(before);
         return MmcCommandResult::Short;
 
+    case kCmdSwitch:
+        if (before != MmcState::Tran) break;
+        ApplySwitch(argument);
+        response[0] = StatusWord(before);
+        return MmcCommandResult::Short;
+
     case kCmdSendExtCsd:
         if (before == MmcState::Idle) return MmcCommandResult::NoResponse;
-        break;
+        if (before != MmcState::Tran) break;
+        BuildExtCsd();
+        response[0] = StatusWord(before);
+        return MmcCommandResult::Short;
 
     default:
         break;
@@ -151,8 +171,23 @@ MmcCommandResult EmmcCardBase::Command(uint8_t index, uint32_t argument,
 }
 
 void EmmcCardBase::Reset() {
-    state_ = MmcState::Idle;
-    rca_   = 0u;
+    state_     = MmcState::Idle;
+    rca_       = 0u;
+    hs_timing_ = 0u;
+    read_data_.clear();
+}
+
+void EmmcCardBase::BuildExtCsd() {
+    read_data_.assign(kExtCsdBytes, 0u);
+    const uint32_t sectors = SectorCount();
+    for (uint32_t i = 0; i < 4u; ++i) {
+        read_data_[kExtCsdSecCount + i] =
+            static_cast<uint8_t>(sectors >> (8u * i));
+    }
+    read_data_[kExtCsdRev]       = kExtCsdRevValue;
+    read_data_[kExtCsdStructure] = kExtCsdStructureValue;
+    read_data_[kExtCsdCardType]  = kExtCsdCardTypeValue;
+    read_data_[kExtCsdHsTiming]  = hs_timing_;
 }
 
 uint32_t EmmcCardBase::StatusWord(MmcState before) const {
@@ -188,23 +223,65 @@ void EmmcCardBase::BuildCsd(uint32_t out[4]) const {
     SealCrc7(out);
 }
 
+void EmmcCardBase::ApplySwitch(uint32_t argument) {
+    const uint32_t access =
+        (argument >> kSwitchAccessShift) & kSwitchAccessMask;
+    const uint32_t index = (argument >> kSwitchIndexShift) & kSwitchByteMask;
+    const uint32_t value = (argument >> kSwitchValueShift) & kSwitchByteMask;
+
+    if (access != kSwitchWriteByte) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: SWITCH access mode %u is not modeled",
+            SlotIndex(), access);
+    }
+    if (index == kExtCsdBusWidth) {
+        if (value > kBusWidth8Bit) {
+            emu_.Get<Fatal>().Die(
+                "eMMC card in slot %u: SWITCH selects bus mode %u, which is "
+                "reserved", SlotIndex(), value);
+        }
+        return;
+    }
+    if (index == kExtCsdHsTiming) {
+        if (value > kHsTimingHighSpeed) {
+            emu_.Get<Fatal>().Die(
+                "eMMC card in slot %u: SWITCH selects interface timing %u, "
+                "which is not a value this card accepts", SlotIndex(), value);
+        }
+        hs_timing_ = static_cast<uint8_t>(value);
+        return;
+    }
+    emu_.Get<Fatal>().Die(
+        "eMMC card in slot %u: SWITCH writes extended CSD byte %u, which is "
+        "not modeled", SlotIndex(), index);
+}
+
 void EmmcCardBase::HaltUnmodelledCommand(uint8_t index, uint32_t argument) {
     emu_.Get<Fatal>().Die(
         "eMMC card in slot %u: CMD%u with argument 0x%08X in card state %u is "
-        "not modelled", SlotIndex(), static_cast<unsigned>(index), argument,
+        "not modeled", SlotIndex(), static_cast<unsigned>(index), argument,
         static_cast<unsigned>(state_));
 }
 
 void EmmcCardBase::SaveState(StateWriter& w) {
     w.Write<uint32_t>(static_cast<uint32_t>(state_));
     w.Write<uint32_t>(rca_);
+    w.Write<uint32_t>(hs_timing_);
 }
 
 void EmmcCardBase::RestoreState(StateReader& r) {
-    uint32_t state = 0u;
-    uint32_t rca   = 0u;
+    uint32_t state     = 0u;
+    uint32_t rca       = 0u;
+    uint32_t hs_timing = 0u;
     r.Read(state);
     r.Read(rca);
+    r.Read(hs_timing);
+    if (hs_timing > kHsTimingHighSpeed) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: restored interface timing %u is not a value "
+            "this card can hold", SlotIndex(), hs_timing);
+    }
+    hs_timing_ = static_cast<uint8_t>(hs_timing);
     if (state > static_cast<uint32_t>(MmcState::Tran) || rca > 0xFFFFu) {
         emu_.Get<Fatal>().Die(
             "eMMC card in slot %u: restored state %u rca 0x%X is not a state "

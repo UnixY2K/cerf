@@ -1,13 +1,14 @@
 #include "../../boards/board_context.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
-#include "../../cpu/physical_bus.h"
 #include "../../jit/guest_cycle_clock.h"
 #include "../../peripherals/peripheral_base.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 #include "../guest_cpu_reset.h"
 #include "../irq_controller.h"
+#include "msm8255_adm_command_list.h"
+#include "msm8255_crci_bus.h"
 
 #include <cstdint>
 #include <mutex>
@@ -47,36 +48,12 @@ constexpr uint32_t kRsltConfIrqEn          = 1u << 0;
 constexpr uint32_t kRsltConfForceFlushRslt = 1u << 1;
 constexpr uint32_t kRsltConfServed = kRsltConfIrqEn | kRsltConfForceFlushRslt;
 
-/* Linux arch/arm/mach-msm include mach dma.h: DMOV_CMD_ADDR is addr >> 3 and
-   DMOV_CMD_LIST, DMOV_CMD_PTR_LIST, DMOV_CMD_INPUT_CFG and DMOV_CMD_OUTPUT_CFG
-   are 0 through 3 shifted left by 29. */
-constexpr uint32_t kCmdPtrTypeShift = 29u;
-constexpr uint32_t kCmdPtrTypeMask  = 3u;
-constexpr uint32_t kCmdPtrTypeList  = 0u;
-
-/* Linux arch/arm/mach-msm include mach dma.h: CMD_PTR_ADDR is addr >> 3,
-   CMD_PTR_LP marks the last pointer of the list and CMD_PTR_PT occupies
-   bits 30:29. */
-constexpr uint32_t kPtrAddrMask = 0x1FFFFFFFu;
-constexpr uint32_t kPtrLast     = 1u << 31;
-constexpr uint32_t kPtrType     = 3u << 29;
-
-/* Linux arch/arm/mach-msm include mach dma.h: CMD_LC marks the last command and
-   the transfer mode occupies the low bits with CMD_MODE_SINGLE zero. */
-constexpr uint32_t kCmdLast     = 1u << 31;
-constexpr uint32_t kCmdModeMask = 7u;
-constexpr uint32_t kCmdModeSingle = 0u;
-constexpr uint32_t kCmdActed = kCmdLast | kCmdModeMask;
-
 /* Linux arch/arm/mach-msm irqs-7x30.h: INT_ADM_AARM is INT_ADM_SC2. */
 constexpr int kVicLine = 64 + 15;
 
 constexpr uint32_t kRsltFifoDepth = 7u;
 
-constexpr uint32_t kMaxPointers = 256u;
-constexpr uint32_t kMaxCommands = 1024u;
-
-class Msm8255Dmov : public Peripheral {
+class Msm8255Dmov : public Peripheral, public Msm8255CrciClient {
 public:
     using Peripheral::Peripheral;
 
@@ -90,6 +67,7 @@ public:
         emu_.Get<GuestCpuReset>().RegisterResetListener(
             [this](ResetLineKind) { ResetState(); });
         emu_.Get<PeripheralDispatcher>().Register(this);
+        emu_.Get<Msm8255CrciBus>().Register(this);
     }
 
     uint32_t MmioBase() const override { return kBase; }
@@ -128,16 +106,18 @@ public:
             if (value != 0u) {
                 emu_.Get<Fatal>().Die(
                     "msm8255 dmov: channel %u took a flush of type 0x%08X, and "
-                    "no source states how this engine's flush type changes what "
-                    "it does to the transfer in flight", ch, value);
+                    "how this flush type changes what the engine does to the "
+                    "transfer in flight is not modeled", ch, value);
             }
             std::lock_guard<std::mutex> g(lock_);
             Channel& c = chans_[ch];
             /* Linux drivers dma qcom qcom_adm.c: adm_dma_remove terminates every
                channel, including ones that never ran. */
             if (!c.in_flight) return;
-            c.in_flight = false;
-            c.cmd_ptr   = 0u;
+            c.in_flight  = false;
+            c.cmd_ptr    = 0u;
+            c.crci       = 0u;
+            c.await_crci = 0u;
             if ((c.rslt_conf & kRsltConfForceFlushRslt) == 0u) {
                 emu_.Get<Fatal>().Die(
                     "msm8255 dmov: channel %u took a flush with FORCE_FLUSH_RSLT "
@@ -162,6 +142,8 @@ public:
             w.Write<uint32_t>(c.head);
             w.Write<uint32_t>(c.cmd_ptr);
             w.Write<uint32_t>(c.in_flight ? 1u : 0u);
+            w.Write<uint32_t>(c.crci);
+            w.Write<uint32_t>(c.await_crci);
             for (uint32_t v : c.fifo) w.Write<uint32_t>(v);
         }
     }
@@ -176,13 +158,29 @@ public:
             uint32_t in_flight = 0u;
             r.Read(in_flight);
             c.in_flight = in_flight != 0u;
+            r.Read(c.crci);
+            r.Read(c.await_crci);
             for (uint32_t& v : c.fifo) r.Read(v);
             if (c.count > kRsltFifoDepth || c.head >= kRsltFifoDepth) {
                 emu_.Get<Fatal>().Die(
                     "msm8255 dmov: restored channel result fifo carries count %u "
                     "head %u past its depth %u", c.count, c.head, kRsltFifoDepth);
             }
-            if (c.in_flight) RequireModeledCmdPtr(c.cmd_ptr);
+            if (c.crci != 0u &&
+                !emu_.Get<Msm8255CrciBus>().Declared(c.crci)) {
+                emu_.Get<Fatal>().Die(
+                    "msm8255 dmov: restored channel is paced on crci %u, and no "
+                    "modeled peripheral drives that line", c.crci);
+            }
+            if (c.await_crci != 0u && c.await_crci != c.crci) {
+                emu_.Get<Fatal>().Die(
+                    "msm8255 dmov: restored channel waits on crci %u while it "
+                    "is paced on crci %u", c.await_crci, c.crci);
+            }
+            if (c.in_flight) {
+                emu_.Get<Msm8255AdmCommandList>().RequireModeledCmdPtr(
+                    c.cmd_ptr);
+            }
         }
     }
 
@@ -190,7 +188,10 @@ public:
         std::lock_guard<std::mutex> g(lock_);
         auto& clock = emu_.Get<GuestCycleClock>();
         for (const Channel& c : chans_) {
-            if (c.in_flight) { clock.Arm(done_, clock.Cycles()); break; }
+            if (c.in_flight && c.await_crci == 0u) {
+                clock.Arm(done_, clock.Cycles());
+                break;
+            }
         }
         PublishLineLocked();
     }
@@ -203,6 +204,8 @@ private:
         uint32_t count = 0u;
         uint32_t cmd_ptr   = 0u;
         bool     in_flight = false;
+        uint32_t crci       = 0u;
+        uint32_t await_crci = 0u;
     };
 
     static uint32_t RegOf(uint32_t off) { return off & ~0x3Cu; }
@@ -268,85 +271,10 @@ private:
         }
     }
 
-    uint32_t BusRead(uint32_t pa) {
-        if (emu_.Get<PeripheralDispatcher>().IsPeripheralAddress(pa)) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 dmov: command list read at 0x%08X reaches a "
-                "peripheral, and the client-interface burst width this engine "
-                "drives is not modeled", pa);
-        }
-        uint32_t v = 0;
-        if (!emu_.Get<PhysicalBus>().Read(pa, BusWidth::Word, &v)) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 dmov: command list read at 0x%08X reaches neither "
-                "memory nor a peripheral", pa);
-        }
-        return v;
-    }
-
-    void Move(uint32_t src, uint32_t dst, uint32_t len) {
-        auto& bus  = emu_.Get<PhysicalBus>();
-        auto& disp = emu_.Get<PeripheralDispatcher>();
-        const BusWidth w = ((len | src | dst) & 3u) == 0u ? BusWidth::Word
-                                                          : BusWidth::Byte;
-        const uint32_t step = static_cast<uint32_t>(w);
-        for (uint32_t done = 0; done < len; done += step) {
-            const uint32_t s = src + done;
-            const uint32_t d = dst + done;
-            if (disp.IsPeripheralAddress(s) || disp.IsPeripheralAddress(d)) {
-                emu_.Get<Fatal>().Die(
-                    "msm8255 dmov: transfer 0x%08X -> 0x%08X reaches a "
-                    "peripheral, and the client-interface burst width this "
-                    "engine drives is not modeled", s, d);
-            }
-            uint32_t v = 0;
-            if (!bus.Read(s, w, &v) || !bus.Write(d, w, v)) {
-                emu_.Get<Fatal>().Die(
-                    "msm8255 dmov: transfer endpoint 0x%08X -> 0x%08X reaches "
-                    "neither memory nor a peripheral", s, d);
-            }
-        }
-    }
-
-    void RunCommandArray(uint32_t pa) {
-        for (uint32_t i = 0; i < kMaxCommands; ++i) {
-            const uint32_t cmd = BusRead(pa);
-            const uint32_t mode = cmd & kCmdModeMask;
-            if (mode != kCmdModeSingle) {
-                emu_.Get<Fatal>().Die(
-                    "msm8255 dmov: command at 0x%08X selects transfer mode %u, "
-                    "whose descriptor layout is not modeled", pa, mode);
-            }
-            if ((cmd & ~kCmdActed) != 0u) {
-                emu_.Get<Fatal>().Die(
-                    "msm8255 dmov: command word 0x%08X at 0x%08X carries fields "
-                    "outside the mode and last-command set this engine acts on",
-                    cmd, pa);
-            }
-            const uint32_t src = BusRead(pa + 4u);
-            const uint32_t dst = BusRead(pa + 8u);
-            const uint32_t len = BusRead(pa + 12u);
-            Move(src, dst, len);
-            pa += 16u;
-            if ((cmd & kCmdLast) != 0u) return;
-        }
-        emu_.Get<Fatal>().Die(
-            "msm8255 dmov: command array passed %u entries with no last-command "
-            "marker", kMaxCommands);
-    }
-
-    void RequireModeledCmdPtr(uint32_t value) {
-        const uint32_t type = (value >> kCmdPtrTypeShift) & kCmdPtrTypeMask;
-        if (type != kCmdPtrTypeList || (value >> 31) != 0u) {
-            emu_.Get<Fatal>().Die(
-                "msm8255 dmov: command pointer 0x%08X carries type %u with bit "
-                "31 set to %u, and only a type 0 pointer list with bit 31 clear "
-                "is modeled", value, type, value >> 31);
-        }
-    }
-
     void StartTransfer(uint32_t ch, uint32_t value) {
-        RequireModeledCmdPtr(value);
+        auto& list = emu_.Get<Msm8255AdmCommandList>();
+        list.RequireModeledCmdPtr(value);
+        const uint32_t crci = list.FirstCrci(value);
         std::lock_guard<std::mutex> g(lock_);
         Channel& c = chans_[ch];
         if (c.in_flight) {
@@ -357,6 +285,34 @@ private:
         }
         c.cmd_ptr   = value;
         c.in_flight = true;
+        c.crci      = crci;
+        auto& lines = emu_.Get<Msm8255CrciBus>();
+        if (crci != 0u && !lines.Declared(crci)) {
+            emu_.Get<Fatal>().Die(
+                "msm8255 dmov: channel %u is paced on crci %u, and no modeled "
+                "peripheral drives that line", ch, crci);
+        }
+        if (crci != 0u && !lines.LevelHigh(crci)) {
+            c.await_crci = crci;
+            return;
+        }
+        c.await_crci = 0u;
+        auto& clock = emu_.Get<GuestCycleClock>();
+        clock.Arm(done_, clock.Cycles());
+    }
+
+    void AssertCrci(uint32_t crci) override {
+        bool due = false;
+        {
+            std::lock_guard<std::mutex> g(lock_);
+            for (Channel& c : chans_) {
+                if (c.in_flight && c.await_crci == crci) {
+                    c.await_crci = 0u;
+                    due = true;
+                }
+            }
+        }
+        if (!due) return;
         auto& clock = emu_.Get<GuestCycleClock>();
         clock.Arm(done_, clock.Cycles());
     }
@@ -364,38 +320,27 @@ private:
     void CompleteDue() {
         for (uint32_t ch = 0; ch < kChannelCount; ++ch) {
             uint32_t value;
+            uint32_t crci;
             {
                 std::lock_guard<std::mutex> g(lock_);
                 if (!chans_[ch].in_flight) continue;
+                if (chans_[ch].await_crci != 0u) continue;
                 value = chans_[ch].cmd_ptr;
+                crci  = chans_[ch].crci;
             }
-            RunTransfer(ch, value);
+            RunTransfer(ch, value, crci);
             std::lock_guard<std::mutex> g(lock_);
-            chans_[ch].in_flight = false;
-            chans_[ch].cmd_ptr   = 0u;
+            chans_[ch].in_flight  = false;
+            chans_[ch].cmd_ptr    = 0u;
+            chans_[ch].crci       = 0u;
+            chans_[ch].await_crci = 0u;
         }
     }
 
-    void RunTransfer(uint32_t ch, uint32_t value) {
-        uint32_t list = (value & kPtrAddrMask) << 3;
-        for (uint32_t i = 0; i < kMaxPointers; ++i) {
-            const uint32_t entry = BusRead(list);
-            if ((entry & kPtrType) != 0u) {
-                emu_.Get<Fatal>().Die(
-                    "msm8255 dmov: pointer entry 0x%08X at 0x%08X carries a "
-                    "pointer type this engine does not model", entry, list);
-            }
-            RunCommandArray((entry & kPtrAddrMask) << 3);
-            if ((entry & kPtrLast) != 0u) {
-                std::lock_guard<std::mutex> g(lock_);
-                PushResultLocked(ch, kRsltValid | kRsltDone);
-                return;
-            }
-            list += 4u;
-        }
-        emu_.Get<Fatal>().Die(
-            "msm8255 dmov: pointer list passed %u entries with no last-pointer "
-            "marker", kMaxPointers);
+    void RunTransfer(uint32_t ch, uint32_t value, uint32_t crci) {
+        emu_.Get<Msm8255AdmCommandList>().Run(value, crci);
+        std::lock_guard<std::mutex> g(lock_);
+        PushResultLocked(ch, kRsltValid | kRsltDone);
     }
 
     void ResetState() {
