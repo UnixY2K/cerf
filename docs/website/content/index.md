@@ -26,14 +26,14 @@ Beta stage - expect issues.
 
 </div>
 
-## [The devices](boards.md)
+## [:fontawesome-solid-laptop: Devices](devices.md)
 
 {devices}
 
-## Features
+## :fontawesome-solid-star: Features
 
 {features}
 
-## [Articles](articles/index.md)
+## [:fontawesome-solid-file-lines: Articles](articles/index.md)
 
 {articles}
