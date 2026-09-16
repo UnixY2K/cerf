@@ -5,7 +5,7 @@ drivers touch. A ROM boots when **that board is implemented in CERF**. The same 
 board has different RAM and flash addresses, a different display controller and different wiring,
 so a matching SoC is not enough.
 
-In practice: a dump boots if its board is on the [supported list](../boards.md). A ROM found on the
+In practice: a dump boots if its board is on the [supported list](/devices.md). A ROM found on the
 internet for some other device will not.
 
 !!! note "Use the original dump - CERF runs it as the hardware does"
