@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: bug
+labels: bug, enhancement
 assignees: dz333n
 type: Bug
 
@@ -13,7 +13,7 @@ A clear and concise description of what the bug is.
 
 **Emulator configuration (please complete the following information):**
  - Device: [e.g. Jornada 720]
- - OS: [e.g. Handheld PC 3.0]
+ - OS: [e.g. Windows CE 3.0]
  - ROM name: [e.g. current name from launcher/devices directory if it's from bundle repository or say custom if it's your own]
  - Did you use Guest Additions: [yes/no]
  - CERF Version: [e.g. 7.0 build 600]
@@ -32,8 +32,8 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
+**Attachments**
+If you are describing a crash, include CERF log files. Locate ``cerf.log`` and ``cerf.crash.log`` in your CERF installation directory.
+
 **Additional context**
 Add any other context about the problem here.
-
-**Attachments**
-If you are describing a crash, CERF log files are required
