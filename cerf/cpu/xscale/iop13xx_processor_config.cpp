@@ -21,10 +21,12 @@ public:
     /* Linux v3.18 arch/arm/mach-iop13xx/include/mach/time.h decodes the
        IOP13xx CORE_FREQ_800 strap as 800000000 Hz. */
     uint32_t CpuClockHz() const override { return 800000000u; }
-    /* siemens_mp377_v1040 nk.exe sub_80448694 installs 16-entry L1
-       descriptors with bit 18 set for both PCI outbound windows. */
-    ArmSupersectionFormat SupersectionFormat() const override { return ArmSupersectionFormat::kXScale; }
-
+    /* Third Generation Intel XScale Microarchitecture Developer's Manual
+       316283-002US section 3.2.2.1 Figure 2: bits[23:20] are PA[35:32] and
+       bits[8:5] are SBZ; "Supersections always use Domain 0." */
+    ArmSupersectionFormat SupersectionFormat() const override {
+        return ArmSupersectionFormat::kPa36;
+    }
 };
 } // namespace
 REGISTER_SERVICE_AS(Iop13xxProcessorConfig, ArmProcessorConfig);

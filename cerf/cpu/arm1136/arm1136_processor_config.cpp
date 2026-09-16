@@ -45,9 +45,12 @@ public:
     bool     HasRev()                     const override { return true; }
     bool     HasLdrexStrex()              const override { return true; }
     bool     HasCp15V6()                  const override { return true; }
-    /* ARM1136JF-S and ARM1136J-S Technical Reference Manual DDI 0211K,
-       Memory Management Unit. */
-    ArmSupersectionFormat SupersectionFormat() const override { return ArmSupersectionFormat::kArmV6; }
+    /* ARM DDI 0211I section 6.2.5: "Every supersection is defined to have its
+       Domain as 0" and they work at either XP setting; Figures 6-4/6-7/6-8
+       show bits[23:20] SBZ and bits[8:5] Ignored, so the PA is 32-bit. */
+    ArmSupersectionFormat SupersectionFormat() const override {
+        return ArmSupersectionFormat::kPa32;
+    }
 
     /* ARM DDI 0406C.c Figure D12-1 (p. D12-2526): c1 opc1=0 CRm=c0
        opc2={0-2} System control registers, Read/Write. */

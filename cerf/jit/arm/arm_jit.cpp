@@ -18,6 +18,7 @@
 #include "arm_block_compiler.h"
 #include "arm_cpu.h"
 #include "arm_interrupt_channel.h"
+#include "arm_injection_band.h"
 #include "arm_mmu.h"
 #include "arm_mmu_probe.h"
 #include "arm_mmu_state.h"
@@ -239,7 +240,7 @@ void ArmJit::RestoreMmuState(StateReader& r) { mmu_->RestoreState(r); }
 void ArmJit::FlushTranslationCache() { cache_->Flush(); }
 
 void ArmJit::SetInjectionBand(uint32_t va, uint32_t pa, uint32_t size) {
-    walker_->SetInjectionBand(va, pa, size);
+    emu_.Get<ArmInjectionBand>().Set(va, pa, size);
 }
 
 void ArmJit::SetDmaRegion(uint32_t /*pa*/, uint32_t /*size*/) {}

@@ -6,11 +6,14 @@
 
 struct DecodedInsn;
 
+/* ARM DDI 0406C.c B3.5: whether a VMSAv7 implementation supports Supersections
+   is IMPLEMENTATION DEFINED, and the extended base address in descriptor
+   bits[8:5, 23:20] is a further option on top. */
 enum class ArmSupersectionFormat : uint8_t {
+    kUnknown,
     kNone,
-    kArmV6,
-    kArmV7,
-    kXScale,
+    kPa32,
+    kPa36,
 };
 
 class ArmProcessorConfig : public Service {

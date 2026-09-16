@@ -34,10 +34,11 @@ std::optional<uint32_t> ArmMmuProbe::WalkVaToPa(uint32_t va) {
 
     switch (l1_pte.fault.type) {
     case ArmL1PteType::kSection: {
-        const ArmSupersectionFormat format = ArmEffectiveSupersectionFormat(
-            processor_config_->SupersectionFormat(), state_.effective_control_register.bits.xp);
+        const ArmSupersectionFormat ss_format =
+            processor_config_->SupersectionFormat();
+        if (ArmSupersectionUnresolved(l1_pte.word, ss_format)) return std::nullopt;
         const ArmSectionTranslation translation =
-            ArmTranslateSection(l1_pte.word, p, format);
+            ArmTranslateSection(l1_pte.word, p, ss_format);
         uint32_t system_pa = 0;
         if (!address_mapper_->Map(translation.physical_address, 1u, system_pa))
             return std::nullopt;
@@ -56,7 +57,7 @@ std::optional<uint32_t> ArmMmuProbe::WalkVaToPa(uint32_t va) {
                                   !state_.effective_control_register.bits.xp;
         uint32_t cpu_pa = 0;
         if (l2_pte.fault.type == ArmL2PteType::kSmallPage) {
-            cpu_pa = (l2_pte.small_page.small_page_base << 12) | (p & 0x0FFFu);
+            cpu_pa = ArmTranslateSmallPage(l2_pte, p).physical_address;
         } else if (l2_pte.fault.type == ArmL2PteType::kExtendedSmallPage && v6_ext_small) {
             cpu_pa = ArmExtSmallPagePa(l2_pte.word, p);
         } else {

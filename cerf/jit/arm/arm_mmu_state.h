@@ -158,6 +158,17 @@ inline int ArmTlbMatchIoWay(const ArmTlbUnit* unit, uint32_t base,
                           asid, need_write);
 }
 
+inline bool ArmTlbEntryIsWideSpan(const ArmTlbEntry& entry) {
+    return entry.tag != kArmTlbInvalidTag && entry.span_shift > 12u;
+}
+
+static_assert(kArmTlbWays <= 32u && (kArmTlbWays & (kArmTlbWays - 1u)) == 0u,
+              "a set's span bits must occupy one aligned field of entry_bits");
+
+inline uint32_t ArmTlbSpanBitField(uint32_t base) {
+    return ((1u << kArmTlbWays) - 1u) << (base & 31u);
+}
+
 inline void ArmTlbPromote(ArmTlbUnit* unit, uint32_t base, int way) {
     if (way <= 0) return;
     const ArmTlbEntry hit = unit->entries[base + static_cast<uint32_t>(way)];
@@ -166,18 +177,15 @@ inline void ArmTlbPromote(ArmTlbUnit* unit, uint32_t base, int way) {
             unit->entries[base + static_cast<uint32_t>(w - 1)];
     }
     unit->entries[base] = hit;
-    if (ArmTlbSpanTracker* tracker = unit->span_tracker) {
-        for (uint32_t w = 0; w < kArmTlbWays; ++w) {
-            const uint32_t slot = base + w;
-            const uint32_t mask = 1u << (slot & 31u);
-            uint32_t& bits = tracker->entry_bits[slot >> 5];
-            const ArmTlbEntry& entry = unit->entries[slot];
-            if (entry.tag != kArmTlbInvalidTag && entry.span_shift > 12u)
-                bits |= mask;
-            else
-                bits &= ~mask;
-        }
-    }
+    ArmTlbSpanTracker* tracker = unit->span_tracker;
+    if (!tracker) return;
+    uint32_t& bits = tracker->entry_bits[base >> 5];
+    const uint32_t rotated_field =
+        ((1u << (static_cast<uint32_t>(way) + 1u)) - 1u) << (base & 31u);
+    const uint32_t live = bits & rotated_field;
+    if (live == 0u) return;
+    bits = (bits & ~rotated_field) |
+           (((live << 1) | (live >> static_cast<uint32_t>(way))) & rotated_field);
 }
 
 inline ArmTlbEntry& ArmTlbInsertSlot(ArmTlbUnit* unit, uint32_t base) {
