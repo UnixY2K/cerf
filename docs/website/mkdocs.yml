@@ -54,7 +54,7 @@ theme:
 nav:
   - Home: index.md
   - Download: download.md
-  - Boards: boards.md
+  - Devices: devices.md
   - Articles:
       - articles/index.md
       - Guest Additions: articles/guest-additions.md
@@ -63,12 +63,12 @@ nav:
       - Command line: articles/command-line.md
       - Getting the guest online: articles/networking.md
       - Touch and mouse: articles/pointer-input.md
-      - Report a bug: articles/report-a-bug.md
       - Running your own ROM: articles/own-rom.md
       - The configuration files: articles/cerf-json.md
       - ROM bundle repositories: articles/bundle-repositories.md
       - Connecting to ActiveSync: articles/activesync.md
       - Windows CE ROM containers: articles/rom-containers.md
+      - Send feedback: /feedback
   - Changelog: changelog.md
 
 markdown_extensions:

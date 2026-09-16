@@ -26,8 +26,6 @@ ICONS_SRC = os.path.join(ROOT, 'launcher', 'assets', 'icons')
 ICONS_SVG = os.path.join(ROOT, 'cerf', 'assets', 'icons_sources')
 
 IMAGES = [
-    (os.path.join('docs', 'cerf_youtube.png'),           'cerf_youtube.png'),
-    (os.path.join('docs', 'launcher.png'),               'launcher.png'),
     (os.path.join('cerf', 'assets', 'cerf.ico'),         'cerf.ico'),
     (os.path.join('cerf', 'assets', 'icons_sources', 'cerf.svg'), 'cerf.svg'),
     (os.path.join('cerf', 'assets', 'icons_sources', 'cerf-light.svg'), 'cerf-light.svg'),

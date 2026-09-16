@@ -36,7 +36,7 @@ FUNDING_LINKS = [
 ]
 
 SITE_LINKS = [
-    ('GitHub',  ':fontawesome-brands-github:',  'https://github.com/gweslab/cerf'),
+    # ('GitHub',  ':fontawesome-brands-github:',  'https://github.com/gweslab/cerf'),
     ('Discord', ':fontawesome-brands-discord:', 'https://discord.gg/QREE9Y2v2d'),
 ]
 
@@ -178,11 +178,11 @@ def _links():
     with open(FUNDING, 'r', encoding='utf-8') as f:
         users = yaml.safe_load(f) or {}
 
-    pills = [f'[{icon} {label}]({url}){{ .cerf-pill }}'
-             for label, icon, url in SITE_LINKS]
-    pills += [f'[{icon} {label}]({url.format(user=users[key])})'
-              '{ .cerf-pill .cerf-pill--support }'
+    pills = [f'[{icon} {label}]({url.format(user=users[key])})'
+              '{ .cerf-pill }'
               for key, label, icon, url in FUNDING_LINKS if users.get(key)]
+    pills += [f'[{icon} {label}]({url}){{ .cerf-pill }}'
+             for label, icon, url in SITE_LINKS]
 
     return ('<div class="cerf-links" markdown>\n\n'
             + '\n'.join(pills)
