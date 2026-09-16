@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #include "../../core/cerf_emulator.h"
+#include "../../core/fatal.h"
 #include "../../core/log.h"
 #include "../../cpu/emulated_memory.h"
 #include "../../host/guest_deep_sleep.h"
@@ -143,6 +144,11 @@ void MipsJit::EnterDeepSleep() { cpu_state_->deep_sleep = 1; }
 void MipsJit::ExitDeepSleep() {
     cpu_state_->deep_sleep = 0;
     channel_->SignalIdleWake();
+}
+
+void MipsJit::EnterIdleWait() {
+    emu_.Get<Fatal>().Die("MipsJit: a peripheral entered the idle wait, which "
+                          "CERF does not model on this engine");
 }
 
 void MipsJit::SaveCpuState(StateWriter& w)    { cpu_->SaveState(w); }

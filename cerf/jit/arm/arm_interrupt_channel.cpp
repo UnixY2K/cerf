@@ -83,17 +83,21 @@ uint32_t __cdecl ArmInterruptChannel::BackOutForIrqHelper(
 
 /* ARM DDI 0406C.c B1.8.14: a WFI wake-up event is "a physical IRQ interrupt,
    regardless of the value of the CPSR.I bit". */
-void __fastcall ArmInterruptChannel::WfiHelper(ArmInterruptChannel* channel) {
-    ArmCpuState* state = channel->cpu_state_;
+void ArmInterruptChannel::WaitForInterrupt() {
+    ArmCpuState* state = cpu_state_;
     for (;;) {
         if (state->reset_pending || state->deep_sleep) return;
         const uint32_t exits = std::atomic_ref<uint32_t>(state->chain_exit_request)
                                    .load(std::memory_order_acquire);
         if ((exits & ~kChainExitIrq) != 0u) return;
-        if (channel->irq_line_.load(std::memory_order_acquire) != 0u) return;
+        if (irq_line_.load(std::memory_order_acquire) != 0u) return;
         /* SA-1110 Dev Man §9.5.2.2: with ICCR.DIM = 0 any enabled interrupt, masked
            or unmasked, ends idle mode; the WFI completes and execution resumes. */
-        if (channel->idle_wake_line_.load(std::memory_order_acquire) != 0u) return;
-        channel->clock_->IdleStep(channel->idle_event_);
+        if (idle_wake_line_.load(std::memory_order_acquire) != 0u) return;
+        clock_->IdleStep(idle_event_);
     }
+}
+
+void __fastcall ArmInterruptChannel::WfiHelper(ArmInterruptChannel* channel) {
+    channel->WaitForInterrupt();
 }

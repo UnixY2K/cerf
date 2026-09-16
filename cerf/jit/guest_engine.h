@@ -43,6 +43,8 @@ public:
 
     virtual void ExitDeepSleep() = 0;
 
+    virtual void EnterIdleWait() = 0;
+
     virtual void SetInjectionBand(uint32_t va, uint32_t pa, uint32_t size) = 0;
 
     virtual void SetDmaRegion(uint32_t pa, uint32_t size) = 0;

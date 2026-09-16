@@ -206,6 +206,8 @@ void ArmJit::ExitDeepSleep() {
     channel_->Wake();
 }
 
+void ArmJit::EnterIdleWait() { channel_->WaitForInterrupt(); }
+
 void ArmJit::SetResetPending(bool is_resume) {
     emu_.Get<GuestCpuReset>().SetPendingResume(is_resume);
     std::atomic_ref<uint32_t>(cpu_state_->chain_exit_request)

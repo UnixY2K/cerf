@@ -7,6 +7,7 @@
 #include "../../host/guest_deep_sleep.h"
 #include "../../jit/arm/arm_mmu.h"
 #include "../../jit/guest_cycle_clock.h"
+#include "../../jit/guest_engine.h"
 #include "../../peripherals/peripheral_base.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
@@ -130,9 +131,11 @@ public:
             /* S3C2410A UM p.7-21: [18:4] gate PCLK or HCLK into the on-chip blocks,
                [2] enters IDLE mode and [0] selects SPECIAL mode. */
             case kOffClkCon: {
-                if ((value & kClkConIdle) != 0u) {
+                if ((value & (kClkConIdle | kClkConPowerOff)) ==
+                    (kClkConIdle | kClkConPowerOff)) {
                     emu_.Get<Fatal>().Die(
-                        "S3C2410ClockPower: CLKCON IDLE, which CERF does not model");
+                        "S3C2410ClockPower: CLKCON selects IDLE and POWER_OFF "
+                        "together, which CERF does not model");
                 }
                 if ((value & kClkConSpecial) != 0u) {
                     emu_.Get<Fatal>().Die(
@@ -149,6 +152,13 @@ public:
                 for (auto& fn : listeners_) fn();
                 if ((value & kClkConPowerOff) != 0u) {
                     emu_.Get<GuestDeepSleep>().Enter();
+                    return;
+                }
+                /* S3C2410A UM p.7-17: CLKCON[2] set enters IDLE mode; p.7-1: only
+                   the core's FCLK stops, every peripheral keeps its clock, and any
+                   interrupt request to the CPU wakes it. */
+                if ((value & kClkConIdle) != 0u) {
+                    emu_.Get<GuestEngine>().EnterIdleWait();
                 }
                 return;
             }

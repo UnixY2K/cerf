@@ -43,6 +43,8 @@ public:
 
     void Wake();
 
+    void WaitForInterrupt();
+
     static void __fastcall WfiHelper(ArmInterruptChannel* channel);
 
 private:
