@@ -37,6 +37,7 @@ public:
 
     uint64_t Cycles() { return CyclesNow(); }
     uint64_t CpuHz() const { return cpu_hz_; }
+    void     SetClockHz(uint64_t hz);
     int64_t  NowNs() { return CyclesToNs(CyclesNow()); }
     uint64_t NsToCycles(int64_t ns) const;
     int64_t  CyclesToNs(uint64_t cycles) const;
@@ -58,6 +59,7 @@ protected:
     virtual void     PublishDeadline(uint64_t cycles_ahead) = 0;
 
 private:
+    void     SetUnits(uint64_t hz);
     void     RunDue(uint64_t now);
     uint64_t NextArmed() const;
     void     Publish(uint64_t now);

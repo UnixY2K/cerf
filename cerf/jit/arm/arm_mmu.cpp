@@ -105,7 +105,7 @@ void ArmMmu::ResetControlRegisters() {
        according to this rule, all bits in CP15 register 1 are set to 0 on
        reset." VMSAv7 leaves the value IMPLEMENTATION DEFINED (ARM DDI
        0406C.c "Reset value of the SCTLR", p. B4-1713). */
-    state_.control_register.word = 0;
+    SetControlRegister(0);
 
     /* ARM DDI 0406C.c B4.1.40 (p. B4-1553): "When implemented as an RW
        field, cpn resets to zero." */
@@ -171,6 +171,16 @@ uint8_t* __fastcall ArmMmu::TranslateUserReadHelper(uint32_t va, ArmMmu* mmu) {
 
 uint8_t* __fastcall ArmMmu::TranslateUserWriteHelper(uint32_t va, ArmMmu* mmu) {
     return mmu->walker_->TranslateUserWrite(mmu->cpu_state_, va);
+}
+
+void ArmMmu::RegisterControlRegisterListener(std::function<void()> fn) {
+    control_register_listeners_.push_back(std::move(fn));
+}
+
+void ArmMmu::SetControlRegister(uint32_t value) {
+    if (state_.control_register.word == value) return;
+    state_.control_register.word = value;
+    for (auto& fn : control_register_listeners_) fn();
 }
 
 void ArmMmu::OnReady() {

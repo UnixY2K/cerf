@@ -47,19 +47,23 @@ peripheral whose Save/Restore are asymmetric, with no desync of the whole stream
 
 `ValidateHeader` verifies identity **before** CERF mutates any live state. A wrong
 ROM, a wrong peripheral layout signature, or a guest-additions mismatch is refused
-at that point. `periph_layout_sig` is a hash over the registered peripheral set
-(count + each `MmioBase()`). CERF therefore rejects a cross-build-incompatible
-image instead of a mis-apply. Identity comes from `RomParserService`.
+at that point. `periph_layout_sig` is a hash over the registered peripheral set.
+Identity comes from `RomParserService`.
 
 ## Build-specific by design
 
 CERF state images are **build-specific**. Only the exact binary that wrote an
-`.img` ever restores it. `ValidateHeader` enforces this at load.
-`periph_layout_sig` (named above), the ROM fingerprint, and `format_version`
-work together. They cause CERF to **refuse, never mis-apply**, any image that
-does not align with the peripheral set of the running build. There is deliberately no
-per-peripheral image versioning. At the chip/board count of CERF, such versioning
-is intractable.
+`.img` ever restores it. `ValidateHeader` enforces that at load, against the
+identity the header carries: the ROM, the registered peripheral set, the
+guest-additions flag, and `format_version`. There is deliberately no
+per-peripheral image versioning.
+
+**Those other fields do not read the contents of a section. A peripheral that
+changes the shape of its own section therefore changes nothing they can
+observe.** Only `format_version` refuses such an image, so a layout change
+depends on it alone. It moves one time for each body of work that ships. The
+increment goes in the commit that lands that work, never in an intermediate
+commit, because no binary ships between those commits.
 
 The consequence for the peripheral contract: the ONLY serialization requirement is
 that the `SaveState` and `RestoreState` of a peripheral are **exact mirrors of each
@@ -67,8 +71,7 @@ other in the same build** (a clean round-trip). Cross-build `.img` compatibility
 **not** a requirement. Never engineer for it. During bring-up a peripheral can grow
 its `SaveState` (new registers), reorder fields, or drop a field that it no longer
 has. It can also move onto a shared core that serializes in a different order.
-Such a peripheral does nothing wrong. `ValidateHeader` refuses the older images that used
-the previous format, exactly as intended.
+Such a peripheral does nothing wrong.
 
 ## Sections - what each captures
 

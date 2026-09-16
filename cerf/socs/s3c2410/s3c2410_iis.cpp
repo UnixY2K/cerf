@@ -182,7 +182,7 @@ private:
     uint32_t SampleRateHzLocked() const {
         const uint32_t div_a = ((psr_ >> kPsrAShift) & kPsrFieldMask) + 1u;
         const uint32_t fs    = (mod_ & kMod384fs) ? kCodecClk384 : kCodecClk256;
-        return static_cast<uint32_t>(kS3C2410PclkHz / div_a / fs);
+        return static_cast<uint32_t>(emu_.Get<S3C2410Clocks>().PclkHz() / div_a / fs);
     }
 
     /* S3C2410A User Manual, printed p. 8-10 SERVMODE 0: "after each atomic

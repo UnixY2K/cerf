@@ -232,7 +232,7 @@ void ArmCpu::RaiseResetException(uint32_t initial_pc, bool initial_thumb) {
 
     if (pending_resume_mmu_set_) {
         ArmMmuState* mmu_state = emu_.Get<ArmMmu>().State();
-        mmu_state->control_register.word           = pending_resume_control_;
+        emu_.Get<ArmMmu>().SetControlRegister(pending_resume_control_);
         mmu_state->effective_control_register.word = pending_resume_control_;
         mmu_state->translation_table_base.word     = pending_resume_ttbr0_;
         mmu_state->domain_access_control           = pending_resume_dacr_;

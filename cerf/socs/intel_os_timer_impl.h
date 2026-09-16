@@ -126,8 +126,7 @@ private:
     }
 
     uint64_t CyclesForTicks(uint64_t ticks) const {
-        return (ticks / tk_unit_) * cyc_unit_ +
-               ((ticks % tk_unit_) * cyc_unit_ + tk_unit_ - 1u) / tk_unit_;
+        return ScaleU64Ceil(ticks, cyc_unit_, tk_unit_);
     }
 
     /* SA-1110 §9.4.1: the OSCR increments on rising edges of the 3.6864-MHz

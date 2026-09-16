@@ -29,14 +29,27 @@ GuestCycleClock::~GuestCycleClock() {
     if (timer_ != nullptr) CloseHandle(timer_);
 }
 
-void GuestCycleClock::OnReady() {
-    cpu_hz_ = ClockHz();
-    if (cpu_hz_ == 0u) {
-        emu_.Get<Fatal>().Die("GuestCycleClock: ClockHz() returned 0");
+void GuestCycleClock::SetUnits(uint64_t hz) {
+    if (hz == 0u) {
+        emu_.Get<Fatal>().Die("GuestCycleClock: a 0 Hz clock rate");
     }
+    cpu_hz_ = hz;
     const uint64_t g = std::gcd(kNsPerSec, cpu_hz_);
     ns_unit_  = kNsPerSec / g;
     cyc_unit_ = cpu_hz_ / g;
+}
+
+void GuestCycleClock::SetClockHz(uint64_t hz) {
+    if (hz == cpu_hz_) return;
+    const uint64_t now = CyclesNow();
+    ref_wall_ns_ = TargetWallNs(now);
+    ref_cycle_   = now;
+    SetUnits(hz);
+    Arm(throttle_, now + NsToCycles(kThrottleSliceNs));
+}
+
+void GuestCycleClock::OnReady() {
+    SetUnits(ClockHz());
     wall_ = &emu_.Get<VirtualClock>();
     timer_ = CreateWaitableTimerExW(nullptr, nullptr,
                                     CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,

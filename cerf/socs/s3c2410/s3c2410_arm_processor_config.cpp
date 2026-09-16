@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "s3c2410_clocks.h"
 
 namespace {
 
@@ -25,8 +26,9 @@ public:
     bool     HasDsp()                     const override { return true; }
     bool     HasLoadStoreDouble()         const override { return true; }
 
-    /* S3C2410 User Manual §7.7.1 - FCLK default 200 MHz (max 266). */
-    uint32_t CpuClockHz()                 const override { return 200000000u; }
+    uint32_t CpuClockHz() const override {
+        return static_cast<uint32_t>(emu_.Get<S3C2410Clocks>().CoreClockHz());
+    }
 };
 
 }  /* namespace */
