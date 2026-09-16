@@ -424,7 +424,7 @@ BOARDS_INFORMATION = [
         "board_id": "philips_velo_1",
         "supported": True,
         "soc": SOC_PR31500,
-        "operating_systems": [WINDOWS_CE_1],
+        "operating_systems": [WINDOWS_CE_1, WINDOWS_CE_2],
         "features": {
             "display": True,
             "touch": True,
