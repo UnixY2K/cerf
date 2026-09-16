@@ -1,6 +1,7 @@
 #include "main_config.h"
 #include "log.h"
 #include "cli_usage.h"
+#include "crash_report.h"
 #include "run_timeout.h"
 #include <cstdlib>
 #include <cstring>
@@ -70,6 +71,7 @@ ArgParseResult ParseCerfArgs(int argc, char* argv[], CerfConfig& cfg) {
 
     if (cfg.log_file) {
         Log::SetFile(cfg.log_file);
+        CrashReport::SetLogFileOverride(cfg.log_file);
     }
 
     RunTimeout::Start(cfg.timeout_seconds);

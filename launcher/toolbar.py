@@ -11,7 +11,7 @@ from toolbar_overflow import OverflowBar
 
 UPDATE_TEXT_ALL = "Update bundles"
 UPDATE_TEXT_ONE = "Update bundle"
-ISSUES_TEXT = "Bugs&Requests"
+FEEDBACK_TEXT = "Feedback"
 
 
 class Toolbar:
@@ -25,7 +25,7 @@ class Toolbar:
                  on_launch: Callable[[Optional[str]], None],
                  on_settings: Callable[[], None],
                  on_about: Callable[[], None],
-                 on_issues: Callable[[], None]) -> None:
+                 on_feedback: Callable[[], None]) -> None:
         self._icons_dir = icons_dir
         self._icons: Dict[str, object] = {}
 
@@ -49,8 +49,8 @@ class Toolbar:
                                        on_update, state="disabled")
         self.btn_settings = self._button("Settings", "settings", on_settings,
                                          side="right")
-        self.btn_issues = self._button(ISSUES_TEXT, "feedback", on_issues,
-                                       side="right")
+        self.btn_feedback = self._button(FEEDBACK_TEXT, "feedback",
+                                         on_feedback, side="right")
         self.btn_about = self._button("About", "help", on_about, side="right")
         self._bar.finish()
 

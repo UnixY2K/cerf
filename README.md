@@ -365,7 +365,7 @@ run_claude.cmd
           ✅ Media instructions for Zune 30 - music is now playable<br/>
           ✅ System clock improvements</p>
         <p><b>🚀 Launcher</b><br/>
-          🆕 GitHub issues window (Bugs&amp;Requests)<br/>
+          🆕 Feedback window listing GitHub issues<br/>
           🆕 Copyright issues contact window<br/>
           🆕 Configurable update channel<br/>
           ✅ Launcher does not wait depend on internet connection and it&#x27;s speed to let you use it<br/>

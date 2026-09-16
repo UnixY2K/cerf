@@ -33,7 +33,6 @@ from cerf_user_json import (
     read_user_meta_name,
     write_launcher_link,
 )
-from github_issues import fetch_open_issues
 from update_source import fetch_update
 from user_device_create import UserDeviceSpec, create_user_device
 from device_state import (
@@ -77,9 +76,6 @@ class BundleManager:
 
     def submit_release_check(self) -> Future:
         return self._pool.submit(fetch_update)
-
-    def submit_issues_fetch(self) -> Future:
-        return self._pool.submit(fetch_open_issues)
 
     def submit_create_user_device(self, spec: UserDeviceSpec,
                                   progress: ProgressFn,

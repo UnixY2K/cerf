@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import queue
+import threading
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-from github_issues import GithubIssue, ISSUES_URL
+from github_issues import GithubIssue, fetch_open_issues
 from screen_geometry import fit_geometry
-import ui_dialogs
 import ui_theme as theme
 
 
+TITLE = "Feedback"
+FEEDBACK_URL = "https://cerf.cx/feedback"
+CREATE_TEXT = "Create issue"
 HEADER_TEXT = ("Top-rated issues are treated as top priority and are taken "
                "into the work first. You can open your own issue, or vote on "
                "the ones already here, on GitHub.")
@@ -19,29 +23,27 @@ EMPTY_TEXT = "No open issues."
 BODY_PAD = 12
 
 
-class IssuesWindow:
-    def __init__(self, app) -> None:
-        self._app = app
+class FeedbackWindow:
+    def __init__(self, parent: tk.Misc) -> None:
         self._issues: Dict[str, GithubIssue] = {}
 
-        dlg = tk.Toplevel(app)
+        dlg = tk.Toplevel(parent)
         self._dlg = dlg
-        dlg.title("Bugs & Requests")
+        dlg.title(TITLE)
         dlg.configure(bg=theme.BG)
-        if app.winfo_viewable():
-            dlg.transient(app)
+        if parent.winfo_viewable():
+            dlg.transient(parent)
 
         body = ttk.Frame(dlg, padding=BODY_PAD)
         body.pack(fill="both", expand=True)
-        body.rowconfigure(2, weight=1)
+        body.rowconfigure(1, weight=1)
         body.columnconfigure(0, weight=1)
 
         self._header = ttk.Label(body, text=HEADER_TEXT, wraplength=640,
                                  justify="left")
-        self._header.grid(row=0, column=0, columnspan=2, sticky="w")
+        self._header.grid(row=0, column=0, columnspan=2, sticky="w",
+                          pady=(0, 10))
         body.bind("<Configure>", self._on_resize)
-        ui_dialogs.link_label(body, ISSUES_URL, ISSUES_URL).grid(
-            row=1, column=0, columnspan=2, sticky="w", pady=(2, 10))
 
         tree = ttk.Treeview(body, columns=("reactions",), show="tree headings",
                             selectmode="none", cursor="hand2")
@@ -50,18 +52,21 @@ class IssuesWindow:
         tree.column("#0", width=300, minwidth=200, anchor="w", stretch=True)
         tree.column("reactions", width=90, minwidth=70, anchor="e",
                     stretch=False)
-        tree.grid(row=2, column=0, sticky="nsew")
+        tree.grid(row=1, column=0, sticky="nsew")
         tree.tag_configure("note", foreground=theme.FG_DIM)
         tree.bind("<Button-1>", self._on_click)
         self._tree = tree
 
         vsb = ttk.Scrollbar(body, orient="vertical", command=tree.yview)
-        vsb.grid(row=2, column=1, sticky="ns")
+        vsb.grid(row=1, column=1, sticky="ns")
         tree.configure(yscrollcommand=vsb.set)
 
         footer = ttk.Frame(body)
-        footer.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        footer.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         footer.columnconfigure(0, weight=1)
+        ttk.Button(footer, text=CREATE_TEXT, style="Launch.TButton",
+                   command=lambda: webbrowser.open(FEEDBACK_URL)).grid(
+            row=0, column=0, sticky="w")
         ttk.Button(footer, text="Close", command=dlg.destroy).grid(
             row=0, column=1, sticky="e")
 
@@ -73,22 +78,35 @@ class IssuesWindow:
         except tk.TclError:
             scale = 1.0
         dlg.minsize(int(420 * scale), int(280 * scale))
-        fit_geometry(dlg, int(720 * scale), int(520 * scale), parent=app)
+        fit_geometry(dlg, int(720 * scale), int(520 * scale), parent=parent)
         dlg.bind("<Escape>", lambda _e: dlg.destroy())
         self._start_fetch()
 
     def _start_fetch(self) -> None:
-        future = self._app.manager.submit_issues_fetch()
+        outcome = queue.Queue(maxsize=1)
 
-        def done(exc: Optional[BaseException]) -> None:
+        def work() -> None:
+            try:
+                outcome.put((fetch_open_issues(), None))
+            except BaseException as exc:
+                outcome.put((None, exc))
+
+        threading.Thread(target=work, daemon=True).start()
+
+        def poll() -> None:
             if not self._dlg.winfo_exists():
                 return
-            if exc is not None:
-                self._note(f"Could not reach GitHub.\n{exc}")
+            try:
+                issues, exc = outcome.get_nowait()
+            except queue.Empty:
+                self._dlg.after(50, poll)
                 return
-            self._fill(future.result())
+            if exc is not None:
+                self._note("Could not reach GitHub.\n{}".format(exc))
+            else:
+                self._fill(issues or [])
 
-        self._app._await_future(future, done)
+        self._dlg.after(50, poll)
 
     def _on_resize(self, event: tk.Event) -> None:
         self._header.config(wraplength=max(240, event.width - 2 * BODY_PAD - 8))
@@ -97,7 +115,7 @@ class IssuesWindow:
         self._tree.delete(*self._tree.get_children())
         self._issues.clear()
         for i, line in enumerate(text.splitlines()):
-            self._tree.insert("", "end", iid=f"note::{i}", text=line,
+            self._tree.insert("", "end", iid="note::{}".format(i), text=line,
                               values=("",), tags=("note",))
 
     def _fill(self, issues: List[GithubIssue]) -> None:
@@ -110,11 +128,12 @@ class IssuesWindow:
             iid = str(issue.number)
             self._issues[iid] = issue
             self._tree.insert("", "end", iid=iid,
-                              text=f"#{issue.number}  {issue.title}",
+                              text="#{}  {}".format(issue.number, issue.title),
                               values=(issue.reactions,))
 
     def _on_click(self, event: tk.Event) -> None:
-        if self._tree.identify("region", event.x, event.y) not in ("tree", "cell"):
+        if self._tree.identify("region", event.x, event.y) not in ("tree",
+                                                                   "cell"):
             return
         issue = self._issues.get(self._tree.identify_row(event.y))
         if issue is not None:

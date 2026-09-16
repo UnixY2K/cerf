@@ -15,6 +15,8 @@ from cli_console import attach_parent_console
 from launcher_cli import run_cli
 from operations import BundleManager
 from transactional import TRANSACTIONAL_COMMAND, run_transactional
+from transactional_crash import (TRANSACTIONAL_CRASH_COMMAND,
+                                 run_transactional_crash)
 from ui_theme import enable_dpi_awareness
 from upgrade_cli import (INSTALL_STAGE, POST_UPGRADE_STAGE, parse_stage,
                          run_install_stage, run_post_upgrade)
@@ -34,6 +36,10 @@ def main(argv: List[str]) -> int:
     if bool(argv) and argv[0] == TRANSACTIONAL_COMMAND:
         enable_dpi_awareness()
         return run_transactional(argv[1:])
+
+    if bool(argv) and argv[0] == TRANSACTIONAL_CRASH_COMMAND:
+        enable_dpi_awareness()
+        return run_transactional_crash(argv[1:])
 
     cli = bool(argv) and argv[0] == "sync"
     if cli:

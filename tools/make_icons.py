@@ -50,7 +50,9 @@ TOOLBAR_SIZE = 48
 TOOLBAR_STEMS = ("new_device", "start_device", "refresh_remote",
                  "update_from_remote", "delete_device", "discard_state",
                  "help", "settings", "feedback")
-LAUNCHER_ONLY_STEMS = WIZARD_STEMS + TOOLBAR_STEMS
+DIALOG_SIZE = 48
+DIALOG_STEMS = ("cerf_error",)
+LAUNCHER_ONLY_STEMS = WIZARD_STEMS + TOOLBAR_STEMS + DIALOG_STEMS
 
 REPO = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO / "cerf" / "assets" / "icons_sources"
@@ -73,7 +75,7 @@ LOGO_STEM = "cerf"
 LOGO_PX = 1024
 
 TARGETS = ("ico", "ce_ico", "ce2_ico", "launcher", "wizard", "toolbar",
-           "badges", "band", "logo")
+           "dialog", "badges", "band", "logo")
 
 
 def render_image(svg_path, size):
@@ -318,6 +320,22 @@ def build_wizard_pngs(names):
               f"({WIZARD_SIZE}x{WIZARD_SIZE})")
 
 
+def build_dialog_pngs(names):
+    stems = list(DIALOG_STEMS)
+    if names:
+        wanted = {Path(n).stem for n in names}
+        stems = [s for s in stems if s in wanted]
+    LAUNCHER_DIR.mkdir(parents=True, exist_ok=True)
+    for stem in stems:
+        svg = SRC_DIR / f"{stem}.svg"
+        if not svg.exists():
+            sys.exit(f"source not found: {svg}")
+        out = LAUNCHER_DIR / f"{stem}.png"
+        write_if_changed(out, render_png(svg, DIALOG_SIZE))
+        print(f"{svg.name} -> {out.relative_to(REPO)}  "
+              f"({DIALOG_SIZE}x{DIALOG_SIZE})")
+
+
 def build_toolbar_pngs(names):
     stems = list(TOOLBAR_STEMS)
     if names:
@@ -443,6 +461,8 @@ def main():
         build_wizard_pngs(args.names)
     if "toolbar" in args.targets:
         build_toolbar_pngs(args.names)
+    if "dialog" in args.targets:
+        build_dialog_pngs(args.names)
     if "band" in args.targets:
         build_band(args.names)
     if "logo" in args.targets:

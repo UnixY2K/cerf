@@ -27,7 +27,7 @@
       System clock improvements
   launcher:
     new: |
-      GitHub issues window (Bugs&Requests)
+      Feedback window listing GitHub issues
       Copyright issues contact window
       Configurable update channel
     fixed: |
