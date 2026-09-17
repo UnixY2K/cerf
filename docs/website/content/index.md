@@ -11,7 +11,7 @@ hide:
 <p class="cerf-hero-line">Emulate <b>30 years</b> of Windows CE</p>
 
 <p class="cerf-hero-sub">
-Handhelds, PDAs, industrial panels. Windows CE 1.0 to Windows Embedded Compact 2013.
+Handhelds, PDAs, industrial panels and more. Windows CE 1.0 to Windows Embedded Compact 2013.
 </p>
 
 [:fontawesome-solid-download: Download (Windows, x86)](download.md){ .md-button .md-button--primary }

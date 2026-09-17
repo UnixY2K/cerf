@@ -8,11 +8,13 @@
 {features}        the front-page feature cards, from docs/website/features.yml
 {articles}        the front-page article cards, from docs/website/articles.yml
 {links}           GitHub / Discord / support pills, from .github/FUNDING.yml
+{cur_year}        today's year, in the mkdocs.yml copyright line
 
 Keeping these as placeholders - rather than files generated into the docs dir -
 lets `mkdocs serve` run straight from docs/website with live reload.
 """
 
+import datetime
 import html
 import os
 import sys
@@ -187,6 +189,13 @@ def _links():
     return ('<div class="cerf-links" markdown>\n\n'
             + '\n'.join(pills)
             + '\n\n</div>')
+
+
+def on_config(config):
+    if config.copyright and '{cur_year}' in config.copyright:
+        config.copyright = config.copyright.replace(
+            '{cur_year}', str(datetime.date.today().year))
+    return config
 
 
 def on_page_markdown(markdown, page, config, files):

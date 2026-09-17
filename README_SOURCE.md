@@ -139,4 +139,4 @@ run_claude.cmd
 CERF was known earlier as [WCECL](https://github.com/dz333n/wcecl) (2019)
 
 [**MIT License**](LICENSE) | [**Third-Party Notices**](THIRD_PARTY_NOTICES.md)<br/>
-**Copyright (c) 2019-{cur_year} [Yaroslav Kibysh](https://yaroslavkibysh.com)**
+**Copyright &copy; 2019-{cur_year} [Yaroslav Kibysh](https://yaroslavkibysh.com)**
