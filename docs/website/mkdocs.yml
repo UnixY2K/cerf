@@ -91,11 +91,13 @@ markdown_extensions:
 
 extra_css:
   - assets/cerf.css
+  - assets/rail.css
 
 extra_javascript:
   - assets/reveal.js
   - assets/slideshow.js
   - assets/scene.js
+  - assets/rail.js
 
 extra:
   analytics:
