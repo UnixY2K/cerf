@@ -162,6 +162,18 @@ branch is named.
   fires. Move high-frequency state observation into a trace file
   (gated by bundle CRC32, excluded from production). Permanent
   LOGs are for low-frequency milestones only.
+- **A mechanism that logs its own counters is already instrumented
+  - read its output before you build a probe.** The fields a
+  subsystem prints about itself are the first and cheapest
+  measurement of it, and they are in every log already on disk. An
+  investigation that builds new instruments, and does not read
+  those fields, can run for sessions beside the answer.
+- **Debug a bounded subsystem from inside itself before its
+  users.** When a failing quantity comes from a component whose
+  inputs and outputs you can enumerate, look at that component's
+  own state first. Its consumers come last. Drill a consumer for a
+  fault whose origin is unlocated, never for one a bounded
+  mechanism already owns.
 
 ### Example shapes (concrete forms of the same method)
 
