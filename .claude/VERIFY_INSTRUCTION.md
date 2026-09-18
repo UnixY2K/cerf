@@ -144,6 +144,8 @@ A sentence is advocacy when you are more likely to flag the code without it. Not
 
 A strike is not a rejection. You still audit, and the target can still pass. It ends only the clearance that rests on borrowed reasoning.
 
+A strike removes the explanation, never the thing that it explained. A failure that the prompt reports stays a finding after the strike.
+
 **Never strike these, because they are contract compliance:** the spawner's prior reasoning chain, supplied so you can find the rationalization inside it. A `GROUNDING:` line. A `PORTED MODEL:` line. A `ROUND HISTORY` entry that states a past finding and the fix that closed it. A plain statement of what the code does.
 
 **Before you clear a disposition that the prompt argued for, answer this self-check in the SUMMARY, verbatim:** *"Did I reach this disposition from something I opened, or from the spawner's paragraph?"* If the answer is the paragraph, you hold no verdict on that point yet. Go and open something.
@@ -230,6 +232,7 @@ must ground each of these:
 - an instruction encoding
 - an MMU rule
 - a timing
+- a cause asserted for a measured failure
 
 The grounding reaches you two ways. The prompt declares it above the target.
 The file carries it in any citation it happens to hold. Read both.
@@ -250,6 +253,20 @@ decompile.
 Judge the reference itself, never its location. A grounding declared only in
 the prompt is worth as much as one written in the file. A grounding you can
 open and disagree with is a `FABRICATED IDA CITATION` or a `GUESSED CONSTANT`.
+
+**A cause is grounded like any other claim.** The prompt asserts a cause when
+it explains a failure. It takes this shape: *"this logic fails on one board,
+and that is correct, because the guest's own code most likely has a quirk
+there"*. Pin it with both of these:
+
+- the function and the instruction that produce the effect
+- evidence that the mechanism accounts for the whole deviation
+
+A mechanism of the right magnitude is not a cause, because many mechanisms
+carry the right magnitude. While the cause stays unpinned, the failure is a
+finding and the explanation counts for nothing. When the failure is in the
+target, an explanation that places its cause outside the target carries the
+burden.
 
 ## Blocked-by-design claims - find the sibling that does it
 
