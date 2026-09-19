@@ -214,7 +214,7 @@ BOARDS_INFORMATION = [
         "board_id": "odo",
         "supported": True,
         "soc": SOC_ODO,
-        "operating_systems": [WINDOWS_CE_211, WINDOWS_CE_3],
+        "operating_systems": [WINDOWS_CE_211, WINDOWS_CE_212, WINDOWS_CE_3],
         "features": {
             "display": True,
             "sound": True,
