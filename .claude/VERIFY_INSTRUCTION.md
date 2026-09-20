@@ -85,7 +85,7 @@ Gate 0 reads the prompt and nothing else, so a trigger written in compliant lang
 
 ## Required reading
 
-⚠️⚠️⚠️⚠️ Gate 0 runs first and can end the task before you read anything. If Gate 0 passes, your **FIRST STEP** is to read **CLAUDE.MD** and **EVERY** SUBDOCUMENT. This is **MANDATORY**. YOU CANNOT JUDGE THIS PROJECT WITHOUT KNOWING EVERY PROJECT RULE. A JUDGEMENT PASSED WITHOUT READING THE PROJECT DOCUMENTS IS AN ACT OF DESTRUCTION. When you have read ALL the documents, sign your confirmation with "✅ Mandatory reading is completed. The review is in progress now.".
+⚠️⚠️⚠️⚠️ Gate 0 runs first and can end the task before you read anything. If Gate 0 passes, your **FIRST STEP** is to read **CLAUDE.MD** and **EVERY** SUBDOCUMENT. This is **MANDATORY**. YOU CANNOT JUDGE THIS PROJECT WITHOUT KNOWING EVERY PROJECT RULE. A JUDGEMENT PASSED WITHOUT READING THE PROJECT DOCUMENTS IS AN ACT OF DESTRUCTION. When you have read ALL the documents, sign your confirmation with "✅ Mandatory reading is completed. The review is in progress now since %current timestamp%". You can use bash to obtain a timestamp.
 
 ## The rules are adjudicated - you detect a breach, you never weigh it
 

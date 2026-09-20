@@ -26,16 +26,25 @@ This page is MANDATORY and complements `rules.md` (behavioral rules) and
 - **No "removed X" / "TODO later" comments** for work that is actually done. If the code is gone, the comment is gone.
 - **A comment that still makes sense moved to a random file is dead weight** - useful comments are glued to the specific code below them (non-obvious invariants, CE quirks, pointer-truncation hazards). Generic narration ("lives in X", "moved to Y", "added for debugging", "out-of-line in Z") reads the same anywhere, because it says nothing about what is actually there.
 
+## The `CERF_DEV_MODE` gate
+
+`build.ps1` sets `CERF_DEV_MODE` to `1` for a dev build and to `0` for a
+production build. The preprocessor then deletes the gated code from the shipped
+binary.
+
+**Gated code must not reach a production build, because it harms the user. A dev
+build keeps that code, because a developer needs it, and the harm does not apply
+to a developer.**
+
+Name both reasons in the message that carries the change: the harm to the user,
+and the need in the dev build. **A gate with no reason is a rule violation.**
+
 ## Logging
 
 - **A LOG line is a record of an event, not prose.** It carries the event and the values a reader needs to act on it (register, address, value, PC, function). Narration, rationale, design defence, apology, TODO text, and anything lifted from the session that produced the code are the same bloat that § Comments bans, and they are banned here for the same reason. This binds hardest on the `LOG` immediately before a `CerfFatalExit`, because that one line is what a user pastes back: it states what was hit and with which values, never an essay about why the path is unimplemented.
 - **Structured log channels** - `LOG(MEM, ...)`, `LOG(NET, ...)`, and more. One channel per subsystem. New subsystem → new channel in `log.h`, not a generic fallback. The exact set of channels is in flux during the v2 rewrite. Align new code with whatever channels exist when you write it, and add a new one when no existing channel fits.
 - **Default log mask is mode-gated.** Dev builds (`CERF_DEV_MODE=1`) enable every channel by default, so investigations have full output with no flag. Production builds (`CERF_DEV_MODE=0`) start with a limited default set: `Log::MASK_PRODUCTION_DEFAULT`, the always-on `Cerf` / `Caution` categories plus the event/milestone channels that stay non-spamming on every board. The user widens or narrows that set with `--log=...` / `--no-log=...`. The switch is the `Log::detail::enabled_mask` initializer in `cerf/core/log.cpp`.
-- **Verbose LOG lines that print inputs/state are acceptable permanently - but only when low-frequency** - the log level filters them, and they aid future debugging at zero runtime cost. That holds when their fire-rate is low enough that the signal a future reader needs is not buried in their noise. Anything that fires per-clock, per-register-access, per-instruction, or per-context-switch is high-frequency and **must not ship in production**: either move it into a device-specific trace file under `cerf/tracing/<bundle>/` (gated by bundle CRC32, excluded from production builds), or wrap the LOG site in `#if CERF_DEV_MODE ... #endif` wherever a trace file does not apply. `build.ps1` sets `CERF_DEV_MODE=1` in dev and `CERF_DEV_MODE=0` in production. See `agent_docs/rules.md` § "Simple LOG verbose lines" for the full removal criteria.
-- **`#if CERF_DEV_MODE` gates the dev-mode subsystem - it is NOT a catch-all for "debugging-ish" code, and this rule does not discourage diagnostics.** Diagnostics are essential. The rule is purely *where each kind lives*. Classify before you wrap anything:
-  - **Temporary, tied to one bug hunt** (a register dump at one PC, a abort-walker trace, a thread-suspend dump): home is a CRC-gated trace file under `cerf/tracing/<bundle>/`, or deletion when the hunt ends - **never** `#if CERF_DEV_MODE` inside JIT/MMU/peripheral core, which launders throwaway debugging into code that looks permanent and pollutes the fragile core.
-  - **Permanently useful, low-frequency operational log** (an event any maintainer wants on a dev *or* production run - an open-bus floating access, a touch into unmapped MMIO, a rare mode transition): a plain `LOG()`. A wrap in `#if CERF_DEV_MODE` is backwards - it deletes the log in production builds, exactly where the silent event it guards is most dangerous.
-  - **Permanently useful but high-frequency** (per-clock / per-register / per-instruction): the *only* case `#if CERF_DEV_MODE` legitimately wraps in core - and even then a trace file is preferred (see the high-frequency-log rule above and in `agent_docs/rules.md`).
+- **Verbose LOG lines that print inputs/state are acceptable permanently - but only when low-frequency** - the log level filters them, and they aid future debugging at zero runtime cost. That holds when their fire-rate is low enough that the signal a future reader needs is not buried in their noise. For a site that fires more often than that, `agent_docs/rules.md` § "Simple LOG verbose lines" gives the frequency test and where the site must go.
 
 ## Services
 
