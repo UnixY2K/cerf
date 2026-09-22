@@ -46,6 +46,11 @@ void GuestCycleClock::SetClockHz(uint64_t hz) {
     ref_cycle_   = now;
     SetUnits(hz);
     Arm(throttle_, now + NsToCycles(kThrottleSliceNs));
+    for (auto& fn : rate_listeners_) fn();
+}
+
+void GuestCycleClock::RegisterRateListener(std::function<void()> fn) {
+    rate_listeners_.push_back(std::move(fn));
 }
 
 void GuestCycleClock::OnReady() {

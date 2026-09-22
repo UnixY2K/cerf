@@ -100,8 +100,7 @@ that timer is what makes it dangerous.
   to the guest's own tick arithmetic holds only when that arithmetic is
   computed from the reload count, the prescaler and the programmed clock. The
   result must also land on the measured ratio. A named mechanism that does not
-  produce the measured magnitude is an open defect, not an explanation. A fix
-  that needs a kernel's handler is the wrong fix.
+  produce the measured magnitude is an open defect, not an explanation.
 - **The same shapes on other silicon.** The i.MX EPIT is a compare-register
   down-counter. Its tick handler re-reads the counter, clamps, and stores the
   compare a few instructions later. A host stretch of that window past the
@@ -111,8 +110,109 @@ that timer is what makes it dangerous.
   loses ticks instead of dying. MIPS CP0 Count / Compare is the OSCR / OSMR
   shape in a coprocessor register.
 
-The time path is never shaped by what a kernel does. It carries no per-ROM
-and no per-kernel branch.
+No kernel identity shapes the time path. It carries no per-ROM, no per-kernel
+and no per-board branch. One implementation serves every ROM. A correction that
+the guest's own register surface selects is the one permitted exception.
+
+## When a kernel needs its own branch
+
+One shared clock drives every board. One shared timer model sits on that clock.
+A kernel whose own idle arithmetic cannot keep time on that model receives a
+correction inside the shared model. A fact that the guest establishes at the
+register surface at run time selects the correction. The ROM never selects it.
+The board never selects it, and the kernel name never selects it.
+
+**A correction answers a kernel, never a chip and never a board.** Two kernels on
+one board differ in the one behavior that a correction targets. One handheld
+kernel banks the elapsed phase at idle entry. Its sibling on the same board drops
+that phase. A board condition cannot express that difference. One implementation
+therefore serves every kernel of the shared model.
+
+**The re-phase absorb.** A kernel arms the tick channel at the
+counter plus whole periods. That write re-bases the grid of the kernel to the
+counter. It discards the phase since the last match. Unless one of the skips below
+applies, the timer advances the counter by that phase. The next match then lands
+where the kernel's arithmetic expects a whole period.
+
+**The absorb moves the counter, never the tick delivery.** The tick handler compares
+the next match against the counter with zero margin at its loop exit. A match
+delivered one tick early makes that loop walk the full 32-bit wrap. The
+free-running counter can advance by the phase that a kernel discarded. The
+counter value at the next match is then still the exact value the kernel armed,
+and the arithmetic of the handler does not change. The timer also delivers the match of
+every other channel whose compare lies inside the advance, because the counter
+passed that compare.
+
+The absorb skips itself on a write to any channel but the tick channel. It skips
+itself before the first match of that channel, and while the last match waits for
+service. It also skips itself when any of these holds:
+
+- The write advances the compare by a whole number of tick periods. The kernel
+  preserved its grid.
+- The kernel read the counter and then the compare register with the status bit
+  clear. It had the phase and banked it itself. A kernel that wakes on another
+  interrupt before its tick measures the phase with this pair, and its exit
+  re-base then discards nothing. Interrupts can be masked or unmasked at that
+  read.
+- The phase is zero, or the advance reaches the compare the kernel just armed.
+
+The tick period comes from the handler stores of the kernel itself. Two consecutive
+equal steps confirm it, because a catch-up loop store is a multiple of the
+period.
+
+**The omitted-exit re-arm.** A bank-and-exit kernel reads
+the counter and then the compare register, with interrupts masked and the status
+bit clear. It banks a whole period against its deadline. Then it returns and
+does not arm the channel. The tick that its own handler armed credits that
+period a second time.
+
+When the next tick-channel event is that match, and no guest write falls between
+them, the timer does not deliver. It moves the compare to the bank point plus one
+period. It does this only after it learns the period, and only while the kernel
+keeps the tick channel enabled.
+
+The kernel can also bank a second time before that match arrives. The timer then
+moves the compare to the first bank point plus one period. The read that observed
+the second bank returns that value. The kernel measures its own phase against the
+grid that the first bank established.
+
+This correction moves the compare register, not the counter. On the match path the
+kernel abandoned that compare. On the read path the kernel receives the replaced
+value and measures its phase against the re-anchored grid.
+
+Another kernel emits that same register signature at every tick. Its tick
+handler acknowledges the status bit, then advances the compare, then reads the
+counter and the compare for its own loop-exit test. That read is masked, the
+status bit is clear, and no write follows it. Both kernels run in the same
+processor mode, and their instruction distances overlap.
+
+**The kind of the last compare write separates them.** The read of the handler
+follows a write that advanced the compare by whole tick periods. Such a write
+preserves the grid of the kernel. A bank follows a write that landed the compare
+on the counter, which re-phases that grid. A pair is therefore a bank in two
+cases:
+
+- No compare write follows the service of the last match.
+- The last compare write re-phases the grid.
+
+The two cases answer different kernels. A kernel that services the match before
+it advances the compare always writes between the match and the read. The kind
+of that write then decides. A kernel that advances the compare before it
+services the match writes nothing there. The absence then decides.
+
+**A measurement over every kernel settles a correction.** Before a correction
+lands, that measurement covers every kernel on the shared model. It records the
+register behavior that selects the correction. A correction that is inert on
+every kernel that does not need it is finished. A predicate that fires on a
+kernel that does not need it is not finished.
+
+**The tick-period rounding is the kernel's own floor, not a defect.** A kernel
+credits one millisecond per 3686 ticks of a 3,686,400 Hz counter. That period is
+0.99989 ms, so the kernel's clock runs 0.109 per mille fast against its own
+crystal. The floor is the same on silicon and on the emulator. A period that
+divides the counter rate exactly has no floor: 3250 ticks at 3,250,000 Hz, or
+92160 ticks at 3,686,400 Hz. The kernel's own floor is the reference for every
+timer change measured on it.
 
 ## How a timer change is judged
 

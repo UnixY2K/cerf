@@ -23,6 +23,8 @@ public:
 
     virtual void     PrintFatalDump()     = 0;
 
+    virtual bool GuestIrqMasked() const = 0;
+
     virtual std::optional<uint8_t*> PeekGuestVa(uint32_t va) = 0;
 
     /* ISA-neutral hibernation seam (the Cpu/Mmu .img sections route here). */

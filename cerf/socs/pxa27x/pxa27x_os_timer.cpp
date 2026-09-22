@@ -51,7 +51,9 @@ protected:
 
 private:
     uint32_t LaneByte(uint32_t addr) {
-        const uint32_t word  = FastRead((addr - MmioBase()) & ~0x3u, 4u);
+        const uint32_t off = (addr - MmioBase()) & ~0x3u;
+        if (off != 0x10u) HaltUnsupportedAccess("ReadByte", addr, 0);
+        const uint32_t word  = FastRead(off, 4u);
         const uint32_t shift = (addr & 0x3u) * 8u;
         return (word >> shift) & 0xFFu;
     }

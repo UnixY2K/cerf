@@ -38,6 +38,7 @@ public:
     uint64_t Cycles() { return CyclesNow(); }
     uint64_t CpuHz() const { return cpu_hz_; }
     void     SetClockHz(uint64_t hz);
+    void     RegisterRateListener(std::function<void()> fn);
     int64_t  NowNs() { return CyclesToNs(CyclesNow()); }
     uint64_t NsToCycles(int64_t ns) const;
     int64_t  CyclesToNs(uint64_t cycles) const;
@@ -69,6 +70,7 @@ private:
     void     ArmWaitTimer(int64_t ns);
 
     std::vector<std::unique_ptr<Event>> events_;
+    std::vector<std::function<void()>>  rate_listeners_;
     Event*        throttle_    = nullptr;
     VirtualClock* wall_        = nullptr;
     void*         timer_       = nullptr;

@@ -42,6 +42,10 @@ public:
     void     Run() override;
     bool     DeepSleep()    const override { return cpu_state_->deep_sleep != 0; }
     bool     ResetPending() const override { return cpu_state_->reset_pending != 0; }
+
+    bool GuestIrqMasked() const override {
+        return cpu_state_->cpsr.bits.irq_disable != 0u;
+    }
     uint32_t Pc()           const override { return cpu_state_->gprs[ArmGpr::kR15]; }
     void     PrintFatalDump() override;
     void     DispatchTraceIter() override {
