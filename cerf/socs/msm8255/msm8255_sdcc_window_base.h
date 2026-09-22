@@ -44,9 +44,11 @@ constexpr uint32_t kCmdResponse = 1u << 6;
 constexpr uint32_t kCmdLongRsp  = 1u << 7;
 constexpr uint32_t kCmdEnable   = 1u << 10;
 constexpr uint32_t kCmdProgEna  = 1u << 11;
+constexpr uint32_t kCmdDatCmd   = 1u << 12;
 
 constexpr uint32_t kCmdModelled =
-    kCmdIndex | kCmdResponse | kCmdLongRsp | kCmdEnable | kCmdProgEna;
+    kCmdIndex | kCmdResponse | kCmdLongRsp | kCmdEnable | kCmdProgEna |
+    kCmdDatCmd;
 
 constexpr uint32_t kStatusCmdTimeout  = 1u << 2;
 constexpr uint32_t kStatusCmdRespEnd  = 1u << 6;
@@ -96,8 +98,10 @@ public:
     void OnReady() override {
         emu_.Get<GuestCpuReset>().RegisterResetListener(
             [this](ResetLineKind) { ResetState(); });
-        emu_.Get<Msm8255ClockReset>().RegisterListener(
-            kResetClock, [this] { ResetState(); });
+        emu_.Get<Msm8255ClockReset>().RegisterListener(kResetClock, [this] {
+            RequireNoTransferInFlight("a clkregim clock reset");
+            ResetState();
+        });
         emu_.Get<PeripheralDispatcher>().Register(this);
         emu_.Get<Msm8255CrciBus>().DeclareFifo(kCrci, kBase + kFifo,
                                               kFifoBytes);
@@ -325,7 +329,18 @@ private:
             static_cast<unsigned>(result), value);
     }
 
+    void RequireNoTransferInFlight(const char* cause) {
+        if (read_pos_ < read_data_.size()) {
+            emu_.Get<Fatal>().Die(
+                "Peripheral at 0x%08X: %s ends a transfer with %u of %u bytes "
+                "undrained, and ending a transfer early is not modeled",
+                kBase, cause, read_pos_,
+                static_cast<unsigned>(read_data_.size()));
+        }
+    }
+
     void StartDataPhase(uint32_t value) {
+        RequireNoTransferInFlight("a data control write");
         Store(data_ctrl_, value);
         if ((value & kDataCtrlEnable) == 0u) {
             read_data_.clear();
@@ -359,8 +374,18 @@ private:
 
     void BindDataPhase(MmcCard& card) {
         const std::vector<uint8_t>& staged = card.ReadData();
-        if (staged.empty()) return;
-        if ((Load(data_ctrl_) & kDataCtrlEnable) == 0u) {
+        const bool armed = (Load(data_ctrl_) & kDataCtrlEnable) != 0u;
+        if (staged.empty()) {
+            if (armed && read_data_.empty()) {
+                emu_.Get<Fatal>().Die(
+                    "Peripheral at 0x%08X: data control 0x%08X arms a data "
+                    "phase the card answered with no data, and a data "
+                    "timeout is not modeled",
+                    kBase, Load(data_ctrl_));
+            }
+            return;
+        }
+        if (!armed) {
             emu_.Get<Fatal>().Die(
                 "Peripheral at 0x%08X: the card answered with %u bytes while no "
                 "data phase is armed",
@@ -401,6 +426,7 @@ private:
         }
         read_pos_ += 4u;
         if (read_pos_ == read_data_.size()) {
+            CardForSlot()->EndDataPhase();
             DriveCrci();
             LatchStatus(kStatusDataEnd);
         }

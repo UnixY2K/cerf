@@ -162,6 +162,9 @@ bool RomParserService::ParseOne(ParsedRom& rom) {
         rom.flat         = std::span<const uint8_t>(rom.raw)
                                .subspan(wm.data_off, wm.flat_size);
         rom.flat_base_va = wm.base_va;
+        rom.is_wmstore   = true;
+        rom.wmstore_payload_off   = wm.payload_off;
+        rom.wmstore_payload_bytes = wm.payload_bytes;
         LOG(Boot, "RomParser %s: _wmstore container - NK XIP @ file 0x%zX "
                   "base=0x%08X span=%.1f MB\n",
             rom.filename.c_str(), wm.data_off, wm.base_va,

@@ -8,16 +8,29 @@ namespace cerf::rom_image_parse {
 
 namespace {
 
-size_t EscoPayloadOffset(std::span<const uint8_t> raw) {
-    if (raw.size() < kZipLocalHeaderSize) return 0;
-    if (std::memcmp(raw.data(), kEscoZipLocalSignature,
-                    sizeof(kEscoZipLocalSignature)) != 0)
-        return 0;
-    if (U16(raw.data(), kZipMethodOff) != kZipMethodStore) return SIZE_MAX;
+struct EscoPayload {
+    size_t off   = 0;
+    size_t bytes = 0;
+};
+
+bool EscoPayloadSpan(std::span<const uint8_t> raw, EscoPayload& out) {
+    if (raw.size() < kZipLocalHeaderSize ||
+        std::memcmp(raw.data(), kEscoZipLocalSignature,
+                    sizeof(kEscoZipLocalSignature)) != 0) {
+        out = {0, raw.size()};
+        return true;
+    }
+    const uint8_t* h = raw.data();
+    if (U16(h, kZipMethodOff) != kZipMethodStore) return false;
+    if ((U16(h, kZipFlagsOff) & kZipFlagDataDescriptor) != 0) return false;
+    const uint32_t stored = U32(h, kZipCompressedSizeOff);
+    if (stored != U32(h, kZipUncompressedSizeOff)) return false;
     const size_t off = kZipLocalHeaderSize
-                     + size_t(U16(raw.data(), kZipNameLenOff))
-                     + size_t(U16(raw.data(), kZipExtraLenOff));
-    return (off < raw.size()) ? off : SIZE_MAX;
+                     + size_t(U16(h, kZipNameLenOff))
+                     + size_t(U16(h, kZipExtraLenOff));
+    if (off >= raw.size() || uint64_t(off) + stored > raw.size()) return false;
+    out = {off, stored};
+    return true;
 }
 
 std::string PartitionName(const uint8_t* entry) {
@@ -34,10 +47,12 @@ std::string PartitionName(const uint8_t* entry) {
 }  /* namespace */
 
 bool WmstoreLocateOsXip(std::span<const uint8_t> raw, WmstoreOsXip& out) {
-    const size_t payload = EscoPayloadOffset(raw);
-    if (payload == SIZE_MAX) return false;
+    EscoPayload span;
+    if (!EscoPayloadSpan(raw, span)) return false;
+    const size_t payload     = span.off;
+    const size_t payload_end = span.off + span.bytes;
 
-    if (payload + kWmstoreSuperblockOff + sizeof(kWmstoreSignature) > raw.size())
+    if (payload + kWmstoreSuperblockOff + sizeof(kWmstoreSignature) > payload_end)
         return false;
     if (std::memcmp(raw.data() + payload + kWmstoreSuperblockOff,
                     kWmstoreSignature, sizeof(kWmstoreSignature)) != 0)
@@ -46,7 +61,7 @@ bool WmstoreLocateOsXip(std::span<const uint8_t> raw, WmstoreOsXip& out) {
     for (size_t i = 0;; ++i) {
         const size_t entry_off =
             payload + kWmstorePartTableOff + i * kWmstorePartEntrySize;
-        if (entry_off + kWmstorePartEntrySize > raw.size()) break;
+        if (entry_off + kWmstorePartEntrySize > payload_end) break;
 
         const uint8_t* entry = raw.data() + entry_off;
         if (std::memcmp(entry, kWmpartSignature, sizeof(kWmpartSignature)) != 0)
@@ -58,10 +73,10 @@ bool WmstoreLocateOsXip(std::span<const uint8_t> raw, WmstoreOsXip& out) {
             + uint64_t(U32(entry, kWmstorePartStartLbaOff)) * kWmstoreSectorBytes;
         const uint64_t part_bytes =
             uint64_t(U32(entry, kWmstorePartSizeLbaOff)) * kWmstoreSectorBytes;
-        if (start_off + kRomSignatureOffset + 8u > raw.size()) return false;
+        if (start_off + kRomSignatureOffset + 8u > payload_end) return false;
 
         const size_t avail = size_t(std::min<uint64_t>(
-            part_bytes, uint64_t(raw.size()) - start_off));
+            part_bytes, uint64_t(payload_end) - start_off));
         std::span<const uint8_t> xip = raw.subspan(size_t(start_off), avail);
 
         if (xip.size() < kRomSignatureOffset + 12u) return false;
@@ -78,9 +93,11 @@ bool WmstoreLocateOsXip(std::span<const uint8_t> raw, WmstoreOsXip& out) {
         const uint32_t flat_size = hdr.physlast - hdr.physfirst;
         if (uint64_t(flat_size) > xip.size()) return false;
 
-        out.data_off  = size_t(start_off);
-        out.flat_size = flat_size;
-        out.base_va   = hdr.physfirst;
+        out.data_off    = size_t(start_off);
+        out.flat_size   = flat_size;
+        out.base_va     = hdr.physfirst;
+        out.payload_off   = payload;
+        out.payload_bytes = span.bytes;
         return true;
     }
     return false;

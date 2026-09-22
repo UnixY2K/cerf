@@ -21,14 +21,19 @@ constexpr uint32_t kCSizeSaturated = 0xFFFu;
 constexpr uint32_t kCSizeMult      = 7u;
 constexpr uint32_t kEraseGrpSize   = 31u;
 constexpr uint32_t kEraseGrpMult   = 31u;
+constexpr uint32_t kWpGrpSize      = 0u;
+constexpr uint32_t kWpGrpEnable    = 1u;
 constexpr uint32_t kR2wFactor      = 4u;
+
+constexpr uint32_t kWpGroupSectors =
+    (kWpGrpSize + 1u) * (kEraseGrpSize + 1u) * (kEraseGrpMult + 1u);
 
 constexpr uint32_t kExtCsdBytes          = 512u;
 constexpr uint32_t kExtCsdRev            = 192u;
 constexpr uint32_t kExtCsdStructure      = 194u;
 constexpr uint32_t kExtCsdCardType       = 196u;
 constexpr uint32_t kExtCsdSecCount       = 212u;
-constexpr uint8_t  kExtCsdRevValue       = 3u;
+constexpr uint8_t  kExtCsdRevValue       = 5u;
 constexpr uint8_t  kExtCsdStructureValue = 2u;
 constexpr uint8_t  kExtCsdCardTypeValue  = 1u;
 
@@ -72,6 +77,7 @@ void SealCrc7(uint32_t out[4]) {
 }  // namespace
 
 void EmmcCardBase::OnReady() {
+    power_on_wp_.assign(WpGroupCount(), 0u);
     emu_.Get<GuestCpuReset>().RegisterResetListener(
         [this](ResetLineKind) { Reset(); });
 }
@@ -85,8 +91,11 @@ MmcCommandResult EmmcCardBase::Command(uint8_t index, uint32_t argument,
 
     switch (index) {
     case kCmdGoIdleState:
-        state_ = MmcState::Idle;
-        rca_   = 0u;
+        if (argument != kGoIdleArgument) break;
+        state_     = MmcState::Idle;
+        rca_       = 0u;
+        hs_timing_ = 0u;
+        user_wp_   = 0u;
         return MmcCommandResult::NoResponse;
 
     case kCmdIoRwDirect:
@@ -145,7 +154,10 @@ MmcCommandResult EmmcCardBase::Command(uint8_t index, uint32_t argument,
         break;
 
     case kCmdSendStatus:
-        if (before != MmcState::Stby && before != MmcState::Tran) break;
+        if (before != MmcState::Stby && before != MmcState::Tran &&
+            before != MmcState::Data) {
+            break;
+        }
         if (arg_rca != rca_) return MmcCommandResult::NoResponse;
         response[0] = StatusWord(before);
         return MmcCommandResult::Short;
@@ -160,6 +172,29 @@ MmcCommandResult EmmcCardBase::Command(uint8_t index, uint32_t argument,
         if (before == MmcState::Idle) return MmcCommandResult::NoResponse;
         if (before != MmcState::Tran) break;
         BuildExtCsd();
+        state_      = MmcState::Data;
+        response[0] = StatusWord(before);
+        return MmcCommandResult::Short;
+
+    case kCmdReadSingleBlock:
+        if (before != MmcState::Tran) break;
+        if (argument >= SectorCount()) {
+            response[0] = StatusWord(before) | kR1AddressOutOfRange;
+            return MmcCommandResult::Short;
+        }
+        read_data_.resize(kBlockBytes);
+        ReadBlock(argument, read_data_.data());
+        state_      = MmcState::Data;
+        response[0] = StatusWord(before);
+        return MmcCommandResult::Short;
+
+    case kCmdSetWriteProt:
+        if (before != MmcState::Tran) break;
+        if (argument >= SectorCount()) {
+            response[0] = StatusWord(before) | kR1AddressOutOfRange;
+            return MmcCommandResult::Short;
+        }
+        SetWriteProtect(argument);
         response[0] = StatusWord(before);
         return MmcCommandResult::Short;
 
@@ -170,11 +205,43 @@ MmcCommandResult EmmcCardBase::Command(uint8_t index, uint32_t argument,
     HaltUnmodelledCommand(index, argument);
 }
 
+void EmmcCardBase::EndDataPhase() {
+    if (state_ != MmcState::Data) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: the host finished a data phase while the "
+            "card is in state %u", SlotIndex(),
+            static_cast<unsigned>(state_));
+    }
+    state_ = MmcState::Tran;
+}
+
 void EmmcCardBase::Reset() {
     state_     = MmcState::Idle;
     rca_       = 0u;
     hs_timing_ = 0u;
+    user_wp_   = 0u;
+    power_on_wp_.assign(power_on_wp_.size(), 0u);
     read_data_.clear();
+}
+
+uint32_t EmmcCardBase::WpGroupCount() const {
+    return (SectorCount() + kWpGroupSectors - 1u) / kWpGroupSectors;
+}
+
+void EmmcCardBase::SetWriteProtect(uint32_t sector) {
+    if (sector % kWpGroupSectors != 0u) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: SET_WRITE_PROT addresses sector %u, which is "
+            "not on a %u-sector write protect group boundary", SlotIndex(),
+            sector, kWpGroupSectors);
+    }
+    if ((user_wp_ & kUserWpPwrWpEn) == 0u) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: SET_WRITE_PROT with USER_WP 0x%02X applies "
+            "temporary write protection, which is not modeled", SlotIndex(),
+            static_cast<unsigned>(user_wp_));
+    }
+    power_on_wp_[sector / kWpGroupSectors] = 1u;
 }
 
 void EmmcCardBase::BuildExtCsd() {
@@ -188,6 +255,7 @@ void EmmcCardBase::BuildExtCsd() {
     read_data_[kExtCsdStructure] = kExtCsdStructureValue;
     read_data_[kExtCsdCardType]  = kExtCsdCardTypeValue;
     read_data_[kExtCsdHsTiming]  = hs_timing_;
+    read_data_[kExtCsdUserWp]    = user_wp_;
 }
 
 uint32_t EmmcCardBase::StatusWord(MmcState before) const {
@@ -218,6 +286,8 @@ void EmmcCardBase::BuildCsd(uint32_t out[4]) const {
     PutBits(out,  47u, 3u,  kCSizeMult);
     PutBits(out,  42u, 5u,  kEraseGrpSize);
     PutBits(out,  37u, 5u,  kEraseGrpMult);
+    PutBits(out,  32u, 5u,  kWpGrpSize);
+    PutBits(out,  31u, 1u,  kWpGrpEnable);
     PutBits(out,  26u, 3u,  kR2wFactor);
     PutBits(out,  22u, 4u,  kWriteBlLen);
     SealCrc7(out);
@@ -229,6 +299,10 @@ void EmmcCardBase::ApplySwitch(uint32_t argument) {
     const uint32_t index = (argument >> kSwitchIndexShift) & kSwitchByteMask;
     const uint32_t value = (argument >> kSwitchValueShift) & kSwitchByteMask;
 
+    if (index == kExtCsdUserWp) {
+        ApplyUserWp(access, value);
+        return;
+    }
     if (access != kSwitchWriteByte) {
         emu_.Get<Fatal>().Die(
             "eMMC card in slot %u: SWITCH access mode %u is not modeled",
@@ -256,6 +330,25 @@ void EmmcCardBase::ApplySwitch(uint32_t argument) {
         "not modeled", SlotIndex(), index);
 }
 
+void EmmcCardBase::ApplyUserWp(uint32_t access, uint32_t value) {
+    uint32_t next = user_wp_;
+    switch (access) {
+    case kSwitchSetBits:   next |= value;  break;
+    case kSwitchClearBits: next &= ~value; break;
+    case kSwitchWriteByte: next = value;   break;
+    default:
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: SWITCH access mode %u on USER_WP is not "
+            "modeled", SlotIndex(), access);
+    }
+    if ((next & ~kUserWpPwrWpEn) != 0u) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: SWITCH leaves USER_WP at 0x%02X, which sets a "
+            "bit that is not modeled", SlotIndex(), next);
+    }
+    user_wp_ = static_cast<uint8_t>(next);
+}
+
 void EmmcCardBase::HaltUnmodelledCommand(uint8_t index, uint32_t argument) {
     emu_.Get<Fatal>().Die(
         "eMMC card in slot %u: CMD%u with argument 0x%08X in card state %u is "
@@ -267,22 +360,49 @@ void EmmcCardBase::SaveState(StateWriter& w) {
     w.Write<uint32_t>(static_cast<uint32_t>(state_));
     w.Write<uint32_t>(rca_);
     w.Write<uint32_t>(hs_timing_);
+    w.Write<uint32_t>(user_wp_);
+    w.Write<uint32_t>(static_cast<uint32_t>(power_on_wp_.size()));
+    w.WriteBytes(power_on_wp_.data(), power_on_wp_.size());
 }
 
 void EmmcCardBase::RestoreState(StateReader& r) {
     uint32_t state     = 0u;
     uint32_t rca       = 0u;
     uint32_t hs_timing = 0u;
+    uint32_t user_wp   = 0u;
+    uint32_t groups    = 0u;
     r.Read(state);
     r.Read(rca);
     r.Read(hs_timing);
+    r.Read(user_wp);
+    r.Read(groups);
+    if (groups != power_on_wp_.size()) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: restored %u write protect groups where the "
+            "card has %zu", SlotIndex(), groups, power_on_wp_.size());
+    }
+    r.ReadBytes(power_on_wp_.data(), power_on_wp_.size());
+    for (const uint8_t group : power_on_wp_) {
+        if (group > 1u) {
+            emu_.Get<Fatal>().Die(
+                "eMMC card in slot %u: restored write protect group state %u is "
+                "not a state this card can hold", SlotIndex(),
+                static_cast<unsigned>(group));
+        }
+    }
+    if ((user_wp & ~kUserWpPwrWpEn) != 0u) {
+        emu_.Get<Fatal>().Die(
+            "eMMC card in slot %u: restored USER_WP 0x%02X sets a bit this card "
+            "cannot hold", SlotIndex(), user_wp);
+    }
+    user_wp_ = static_cast<uint8_t>(user_wp);
     if (hs_timing > kHsTimingHighSpeed) {
         emu_.Get<Fatal>().Die(
             "eMMC card in slot %u: restored interface timing %u is not a value "
             "this card can hold", SlotIndex(), hs_timing);
     }
     hs_timing_ = static_cast<uint8_t>(hs_timing);
-    if (state > static_cast<uint32_t>(MmcState::Tran) || rca > 0xFFFFu) {
+    if (state > static_cast<uint32_t>(MmcState::Data) || rca > 0xFFFFu) {
         emu_.Get<Fatal>().Die(
             "eMMC card in slot %u: restored state %u rca 0x%X is not a state "
             "this card can reach", SlotIndex(), state, rca);
