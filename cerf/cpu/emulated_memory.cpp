@@ -133,20 +133,36 @@ uint8_t* EmulatedMemory::TryTranslateWrite(uint32_t paddr) {
        must dispatch to the flash controller / I/O peripheral instead
        of caching a host pointer; signal that to the walker by
        returning nullptr. */
-    if (r->page_protect == PAGE_READONLY ||
-        r->page_protect == PAGE_EXECUTE_READ) {
+    if (IsFlash(*r)) {
         return nullptr;
     }
 
     return EnsureBacked(r) + ((paddr - r->base) & r->wrap_mask);
 }
 
+bool EmulatedMemory::IsFlash(const Region& r) {
+    return r.page_protect == PAGE_READONLY || r.page_protect == PAGE_EXECUTE_READ;
+}
+
+EmulatedMemory::Region* EmulatedMemory::BulkRegion(uint32_t vaddr, size_t size) {
+    Region* r = FindRegion(vaddr);
+    if (!r || static_cast<uint64_t>(vaddr) + size >
+                  static_cast<uint64_t>(r->base) + r->size) {
+        return nullptr;
+    }
+    return r;
+}
+
+bool EmulatedMemory::CanCopyRange(uint32_t paddr, size_t size, bool writable) {
+    const Region* r = BulkRegion(paddr, size);
+    return r && (!writable || !IsFlash(*r));
+}
+
 uint8_t* EmulatedMemory::TryTranslateRange(uint64_t paddr, uint64_t size, bool write) {
     if (size == 0 || paddr > UINT32_MAX || size > (uint64_t{1} << 32) - paddr)
         return nullptr;
     Region* r = FindRegion(static_cast<uint32_t>(paddr));
-    if (!r || (write && (r->page_protect == PAGE_READONLY ||
-                        r->page_protect == PAGE_EXECUTE_READ)))
+    if (!r || (write && IsFlash(*r)))
         return nullptr;
     const uint64_t offset = paddr - r->base;
     const uint64_t backed_offset = offset & r->wrap_mask;
@@ -207,20 +223,17 @@ void EmulatedMemory::WriteDword(uint32_t vaddr, uint64_t value) {
 EmulatedMemory::Region* EmulatedMemory::BulkRegionFor(uint32_t vaddr,
                                                       size_t size,
                                                       const char* op) {
+    if (Region* ok = BulkRegion(vaddr, size)) return ok;
     Region* r = FindRegion(vaddr);
     if (!r) {
         LOG(Caution, "EmulatedMemory::%s unmapped address "
                 "0x%08X size 0x%zX\n", op, vaddr, size);
-        CerfFatalExit(CERF_FATAL_RUNTIME_ERROR);
-    }
-    uint64_t end = static_cast<uint64_t>(vaddr) + size;
-    if (end > static_cast<uint64_t>(r->base) + r->size) {
+    } else {
         LOG(Caution, "EmulatedMemory::%s crosses region boundary at "
                 "0x%08X size 0x%zX (region 0x%08X size 0x%X)\n",
                 op, vaddr, size, r->base, r->size);
-        CerfFatalExit(CERF_FATAL_RUNTIME_ERROR);
     }
-    return r;
+    CerfFatalExit(CERF_FATAL_RUNTIME_ERROR);
 }
 
 void EmulatedMemory::CopyIn(uint32_t vaddr, const void* host_src, size_t size) {

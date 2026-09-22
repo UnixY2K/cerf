@@ -14,13 +14,12 @@ a guest task manager. The subsystem spans host C++ under `cerf/boot/` +
 `cerf_guest` is larger than a typical victim ROM slot. It must survive boards
 that wipe DRAM at boot. It must also pass Windows Mobile module
 authentication. One mechanism satisfies all three on every ROM class and every
-CE version. Two pieces are common to all ROMs:
+CE version. These pieces are common to all ROMs:
 
 - CERF injects a **tiny stub** (`ce_apps/cerf_guest_stub/`) as the victim
   display-driver module. The injector repoints the module record of the victim
-  at the stub. The bytes of the stub live in dedicated memory, never squatted
-  into the image of the victim. A tiny stub stays under the per-CE-version
-  slot-size limits that the full body exceeds.
+  at the stub. A tiny stub stays under the per-CE-version slot-size limits
+  that the full body exceeds.
 - A `cerf_virt` MMIO channel
   (`cerf/peripherals/cerf_virt/cerf_virt_guest_body.cpp`) delivers the **full
   cerf_guest body** separately. The stub and body are staged per guest
@@ -39,17 +38,33 @@ Only **the placement of the stub into the ROM** differs by ROM class:
 - **XIP / MultiXIP** (`cerf/boot/guest_additions_injector.cpp`) - the ROM
   carries a TOC of XIP modules. The injector therefore overwrites the TOC entry
   of the victim module (its e32/o32/load offsets) to repoint it at the stub.
-  The e32/o32 records and section bytes of the stub live in a CERF-owned PA
-  band in the `cerf_virt` window (`cerf/boot/cerf_injection_region.{h,cpp}`).
-  That band is exposed at a guest-unmapped static-window VA, a hole that
-  `PageTableBuilder::StaticWindowHole` finds over the `MappedVaSpans()` of the
-  board. An MMU-walker overlay serves the band (`ArmInjectionBand::Serve` at
-  the L1-fault site), never the section bytes of the victim. On CE6/7 the stub
-  runs in place from the band, because a kernel-VA base makes the loader skip
-  its section copy. On CE3/4/5 the loader copies the stub to a section-1 vbase
-  (`GuestModulePlacer::ComputeVbase`). The band sections are flagged
-  MEM_WRITE|SHARED, so the loader takes the overlay-servable memcpy with no
-  per-process slot-base fold on the device.exe carrier load.
+  The section bytes and e32/o32 records of the stub need one host span. The
+  injector picks one of two hosts:
+  - **Squat, the primary host.** This host is the largest section of the
+    victim inside the ROM image. The injector takes this section when the
+    section holds the whole span, is PA-contiguous over the span, and lies
+    inside one CERF memory region.
+    For an in-place load, the section must also be page-aligned and writable.
+    An in-place code section has no MEM_WRITE flag, and the CE6 loader refuses
+    such a section when its dataptr is not page-aligned.
+    The injector zeroes the span first. The `.bss` of the stub lies past its
+    raw bytes, and an in-place load does not clear that `.bss`.
+  - **Band, the fallback.** This host is a CERF-owned PA band in the
+    `cerf_virt` window (`cerf/boot/cerf_injection_region.{h,cpp}`). Its VA is
+    a static-window VA that the OAT of the board leaves unmapped. The MMU of
+    the guest engine maps that VA to the band. Each victim that falls back
+    takes its own span in the band. A board halts when its squat fails and
+    the band has no static-window hole or no room left for the span.
+
+  On CE6 and later the stub runs in place from its host, because a kernel-VA
+  base makes the loader skip its section copy. On CE5 and earlier the loader
+  copies the stub to a section-1 vbase. The injector flags those sections
+  MEM_WRITE|SHARED. The loader then copies them with ordinary loads, so a band
+  host works as a copy source. The loader also makes no per-process slot-base
+  fold when the device.exe carrier loads the stub.
+
+  A hard reset replays the whole host span. CERF also restores an in-place host
+  on every reset, because the writable data of the stub lives in it.
 - **IMGFS** (WM6+, `cerf/boot/imgfs_injector.cpp` + `ce_imgfs_patcher.{h,cpp}`)
   - IMGFS is a flash filesystem (an FTL over the NOR/NAND image), not an XIP
   TOC. There is therefore no slot to overwrite. The injector allocates fresh
@@ -60,10 +75,9 @@ Only **the placement of the stub into the ROM** differs by ROM class:
   injects the SAME stub. Only the placement substrate is the FTL instead of
   the TOC.
 
-Every path flags the writable sections of the stub SHARED, through
-`GuestModulePlacer::EffSectionFlags` or directly next to MEM_WRITE on the
-CE3/4/5 XIP copy path. The stub also keeps its per-process state pid-keyed.
-See § The cross-process writable-state invariant for the reason.
+Every path flags the writable sections of the stub SHARED. The stub also keeps
+its per-process state pid-keyed. See § The cross-process writable-state
+invariant for the reason.
 
 The manual-map shape of the body is a load-bearing contract: a single import
 DLL (coredll), HIGHLOW-only relocations, no TLS. A rebuild of `cerf_guest` that

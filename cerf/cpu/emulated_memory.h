@@ -58,6 +58,8 @@ public:
        CopyIn. */
     void CopyOut(uint32_t vaddr, void* host_dst, size_t size);
 
+    bool CanCopyRange(uint32_t paddr, size_t size, bool writable);
+
     /* Power-cycle RAM loss: zero every backed volatile region. Flash
        (PAGE_READONLY / PAGE_EXECUTE_READ) keeps its contents - guest NOR
        writes survive a real power cycle. JIT thread at reset delivery
@@ -94,6 +96,8 @@ private:
     /* Shared CopyIn/CopyOut gate: region containing [vaddr, vaddr+size)
        or fatal (unmapped / boundary-crossing). */
     Region*  BulkRegionFor(uint32_t vaddr, size_t size, const char* op);
+    Region*  BulkRegion(uint32_t vaddr, size_t size);
+    static bool IsFlash(const Region& r);
     /* Atomic first-touch CAS on host_ptr. Halts on VirtualAlloc fail. */
     uint8_t* EnsureBacked(Region* r);
 

@@ -10,6 +10,8 @@ public:
     using BoardContext::BoardContext;
 
     std::string_view GetBoardId() const override { return BoardId::SiemensMp377; }
+
+    uint32_t GuestAdditionsWindowBase() const override { return 0xE0000000u; }
 };
 
 }  /* namespace */
