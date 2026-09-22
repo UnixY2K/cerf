@@ -2,6 +2,7 @@
 #include "ford_sync2_ilp_channel.h"
 #include "ford_sync2_ilp_signals.h"
 #include "../board_context.h"
+#include "ford_sync_2_id.h"
 #include "../../core/cerf_emulator.h"
 
 namespace {
@@ -10,7 +11,7 @@ public:
     using Service::Service;
     bool ShouldRegister() override {
         auto* board = emu_.TryGet<BoardContext>();
-        return board && board->GetBoard() == Board::FordSyncGen2;
+        return board && board->GetBoardId() == BoardId::FordSync2;
     }
     void OnReady() override {
         emu_.Get<FordSync2AmbientTemperature>();
