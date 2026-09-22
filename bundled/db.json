@@ -75,6 +75,10 @@
     {
       "id": "linux",
       "name": "Linux"
+    },
+    {
+      "id": "wp7",
+      "name": "Windows Phone 7"
     }
   ],
   "soc_families": [
@@ -1520,7 +1524,9 @@
       "short_name": "Lumia 800",
       "supported": false,
       "soc_id": "msm8255",
-      "operating_system_ids": [],
+      "operating_system_ids": [
+        "wp7"
+      ],
       "device_features": [],
       "notes": [],
       "lcd_panel_size": {
