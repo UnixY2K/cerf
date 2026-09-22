@@ -5,7 +5,7 @@
 #include "../boot/guest_cold_boot.h"
 #include "../core/cerf_emulator.h"
 #include "../socs/guest_cpu_reset.h"
-#include "about_dialog.h"
+#include "about_transaction.h"
 #include "host_canvas.h"
 #include "host_input_capture.h"
 #include "host_key_binding.h"
@@ -226,7 +226,9 @@ void HostMenu::HandleCommand(int id) {
         case kIdSaveShot:   emu_.Get<HostScreenshot>().Save(); break;
         case kIdCopyShot:   emu_.Get<HostScreenshot>().Copy(); break;
         case kIdMatchGuest: emu_.Get<HostWindow>().MatchGuestSize(); break;
-        case kIdAbout:      emu_.Get<AboutDialog>().Show(); break;
+        case kIdAbout:
+            emu_.Get<AboutTransaction>().Open(emu_.Get<HostWindow>().Hwnd());
+            break;
         case kIdArticles:
             emu_.Get<HostLinkOpener>().Open(nullptr, kArticlesUrl);
             break;

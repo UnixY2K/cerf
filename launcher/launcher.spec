@@ -2,12 +2,18 @@
 from pathlib import Path
 import glob
 import os
+import sys
 
 THIS_DIR = Path(os.path.abspath(SPEC)).parent
 REPO_ROOT = THIS_DIR.parent
-ICON_PATH    = str(REPO_ROOT / "cerf" / "assets" / "launcher.ico")
+if str(THIS_DIR) not in sys.path:
+    sys.path.insert(0, str(THIS_DIR))
+import exe_version
+
+ASSETS       = REPO_ROOT / "cerf" / "assets"
+ICON_PATH    = str(ASSETS / "cerf.ico")
+UNINSTALL_ICON_PATH = str(ASSETS / "cerf_error.ico")
 VERSION_PATH = str(REPO_ROOT / "cerf" / "version.h")
-LOGO_PATH    = str(REPO_ROOT / "cerf" / "assets" / "cerf_1024.png")
 
 NAME = os.environ.get("CERF_LAUNCHER_NAME", "launcher")
 
@@ -19,6 +25,9 @@ UCRT_DIR = os.environ.get("CERF_LAUNCHER_UCRT", "")
 UCRT_BINARIES = [(p, ".") for p in glob.glob(os.path.join(UCRT_DIR, "*.dll"))] \
                 if UCRT_DIR else []
 
+BAND_FILES = [(p, "assets") for p in
+              sorted(glob.glob(str(ASSETS / "about_band_*.png")))]
+
 block_cipher = None
 
 a = Analysis(
@@ -27,7 +36,8 @@ a = Analysis(
     binaries=UCRT_BINARIES,
     datas=[(ICON_PATH, "."), (VERSION_PATH, "."),
            (str(THIS_DIR / "assets" / "icons"), "assets/icons"),
-           (LOGO_PATH, "assets")],
+           (str(THIS_DIR / "assets" / "contributors_generated.txt"),
+            "assets")] + BAND_FILES,
     hiddenimports=[],
     hookspath=[],
     runtime_hooks=[],
@@ -59,5 +69,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=ICON_PATH,
+    icon=[ICON_PATH, UNINSTALL_ICON_PATH],
+    version=exe_version.build(VERSION_PATH, NAME + ".exe", NAME,
+                              "Universal Windows CE emulator"),
 )

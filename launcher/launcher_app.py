@@ -92,8 +92,9 @@ class LauncherApp(OperationsMixin, RefreshMixin, SpawnMixin, tk.Tk):
         if upgraded:
             self.after(200, lambda: show_info(
                 self, "Upgrade complete",
-                f"CERF has been upgraded to {version}." if version
-                else "CERF has been upgraded."))
+                f"CE Runtime Foundation has been upgraded to {version}."
+                if version
+                else "CE Runtime Foundation has been upgraded."))
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 

@@ -42,6 +42,8 @@ _DARK_PALETTE: Dict[str, str] = {
     "DANGER_FG": "#f48771", "WARN_FG": "#ffb900", "LAUNCH_FG": "#3fb950",
     "CARD_RUNNING_BG": "#1e3a1e", "CARD_UPDATE_BG": "#3a2f12",
     "CARD_RUNNING_SEL": "#2e5a2e", "CARD_UPDATE_SEL": "#5c4a1e",
+    "DANGER_BG_HOVER": "#3a1e1e", "DANGER_BG_PRESSED": "#5a1d1d",
+    "DANGER_FG_PRESSED": "#f48771",
 }
 _LIGHT_PALETTE: Dict[str, str] = {
     "BG": "#f3f3f3", "BG_LIGHTER": "#ffffff", "BG_FIELD": "#ffffff",
@@ -51,6 +53,8 @@ _LIGHT_PALETTE: Dict[str, str] = {
     "DANGER_FG": "#c42b1c", "WARN_FG": "#8a5a00", "LAUNCH_FG": "#107c10",
     "CARD_RUNNING_BG": "#dff3df", "CARD_UPDATE_BG": "#fbeecb",
     "CARD_RUNNING_SEL": "#bfe6bf", "CARD_UPDATE_SEL": "#f2dca0",
+    "DANGER_BG_HOVER": "#fbe4e1", "DANGER_BG_PRESSED": "#f4cbc5",
+    "DANGER_FG_PRESSED": "#a1260d",
 }
 
 IS_DARK = system_uses_dark()
@@ -75,6 +79,9 @@ CARD_RUNNING_BG = _PALETTE["CARD_RUNNING_BG"]
 CARD_UPDATE_BG  = _PALETTE["CARD_UPDATE_BG"]
 CARD_RUNNING_SEL = _PALETTE["CARD_RUNNING_SEL"]
 CARD_UPDATE_SEL  = _PALETTE["CARD_UPDATE_SEL"]
+DANGER_BG_HOVER   = _PALETTE["DANGER_BG_HOVER"]
+DANGER_BG_PRESSED = _PALETTE["DANGER_BG_PRESSED"]
+DANGER_FG_PRESSED = _PALETTE["DANGER_FG_PRESSED"]
 
 
 def _build_state_tint() -> dict:
@@ -98,6 +105,7 @@ def refresh_palette() -> bool:
     global UPDATE_LINK, LINK_FG, GROUP_BG, PREVIEW_STOPPED, DANGER_FG, WARN_FG
     global LAUNCH_FG
     global CARD_RUNNING_BG, CARD_UPDATE_BG, CARD_RUNNING_SEL, CARD_UPDATE_SEL
+    global DANGER_BG_HOVER, DANGER_BG_PRESSED, DANGER_FG_PRESSED
     dark = system_uses_dark()
     if dark == IS_DARK:
         return False
@@ -122,6 +130,9 @@ def refresh_palette() -> bool:
     CARD_UPDATE_BG  = _PALETTE["CARD_UPDATE_BG"]
     CARD_RUNNING_SEL = _PALETTE["CARD_RUNNING_SEL"]
     CARD_UPDATE_SEL  = _PALETTE["CARD_UPDATE_SEL"]
+    DANGER_BG_HOVER   = _PALETTE["DANGER_BG_HOVER"]
+    DANGER_BG_PRESSED = _PALETTE["DANGER_BG_PRESSED"]
+    DANGER_FG_PRESSED = _PALETTE["DANGER_FG_PRESSED"]
     STATE_TINT = _build_state_tint()
     return True
 
@@ -258,10 +269,12 @@ def apply_theme(root: tk.Tk) -> None:
                     background=BG_FIELD, foreground=DANGER_FG,
                     bordercolor="#a1260d", padding=4, borderwidth=1)
     style.map("Danger.TButton",
-              background=[("pressed", "#5a1d1d"),
-                          ("active",  "#3a1e1e"),
+              background=[("pressed", DANGER_BG_PRESSED),
+                          ("active",  DANGER_BG_HOVER),
                           ("disabled", BG)],
-              foreground=[("disabled", FG_DIM)],
+              foreground=[("pressed", DANGER_FG_PRESSED),
+                          ("active", DANGER_FG),
+                          ("disabled", FG_DIM)],
               bordercolor=[("disabled", BORDER),
                            ("focus", "#c42b1c")])
 
@@ -306,6 +319,7 @@ def apply_theme(root: tk.Tk) -> None:
                               ("active",   BG_HOVER)])
 
     style.configure("Hint.TLabel", background=BG, foreground=FG_DIM)
+    style.configure("Danger.TLabel", background=BG, foreground=DANGER_FG)
 
     style.configure("Warn.TLabelframe", background=BG,
                     bordercolor="#9a6a00", lightcolor=BG, darkcolor=BG)

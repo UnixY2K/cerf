@@ -8,7 +8,8 @@ from tkinter import font as tkfont
 from tkinter import ttk
 from typing import Optional
 
-from app_paths import exe_dir, resolve_icons_dir
+from app_paths import exe_dir
+from branded_dialog import load_dialog_icon
 from feedback_window import FeedbackWindow
 from rich_text import RichText, bold, link, plain
 from screen_geometry import fit_geometry
@@ -91,15 +92,9 @@ class CrashWindow:
     def _build_heading(self, body: ttk.Frame) -> None:
         head = ttk.Frame(body)
         head.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        icons = resolve_icons_dir()
-        if icons is not None:
-            try:
-                self._icon = tk.PhotoImage(
-                    file=str(icons / "{}.png".format(ICON_STEM)))
-                ttk.Label(head, image=self._icon).pack(side="left",
-                                                       padx=(0, 12))
-            except tk.TclError:
-                pass
+        self._icon = load_dialog_icon(head, ICON_STEM)
+        if self._icon is not None:
+            ttk.Label(head, image=self._icon).pack(side="left", padx=(0, 12))
         base = tkfont.nametofont("TkDefaultFont")
         big = base.copy()
         big.configure(size=int(abs(base.cget("size")) * 1.6), weight="bold")

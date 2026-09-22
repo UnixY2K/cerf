@@ -6,7 +6,7 @@ import sys
 import time
 from ctypes import wintypes
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 
 CERF_EXE_NAME = "cerf.exe"
@@ -17,7 +17,12 @@ GLOBAL_CONFIG_NAME = "cerf.json"
 PID_WAIT_TIMEOUT = 30.0
 
 INSTALL_FLAG = "--upgrade"
+FRESH_INSTALL_FLAG = "--install"
 POST_UPGRADE_FLAG = "--post-upgrade"
+UNINSTALL_FLAG = "--uninstall"
+DESKTOP_ICON_FLAG = "--create-desktop-icon"
+START_MENU_FLAG = "--create-start-menu-entry"
+NO_LAUNCH_FLAG = "--do-not-launch-after-install"
 WAIT_FOR_PID_PREFIX = "--wait-for-pid="
 
 _TH32CS_SNAPPROCESS = 0x00000002
@@ -66,6 +71,18 @@ def running_cerf_pids() -> List[int]:
         kernel32.CloseHandle(snapshot)
 
 
+def wait_for_cerf_exit(ask_retry: Callable[[str, str], bool]) -> bool:
+    while True:
+        if not running_cerf_pids():
+            return True
+        if not ask_retry(
+                "The emulator is running",
+                "CE Runtime Foundation is running and its files cannot be "
+                "replaced while it is.\n\nClose every emulator window, then "
+                "retry."):
+            return False
+
+
 def _pid_alive(pid: int) -> bool:
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.OpenProcess(_SYNCHRONIZE, False, wintypes.DWORD(pid))
@@ -103,8 +120,9 @@ def spawn_stage(exe: Path, args: List[str], cwd: Path) -> None:
         raise UpgradeError(f"cannot start {exe}: {exc}") from exc
 
 
-def stage_argument(wait_pid: int, mode_flag: str) -> List[str]:
-    return [f"--wait-for-pid={wait_pid}", mode_flag]
+def stage_argument(wait_pid: int, mode_flag: str,
+                   carried: Optional[List[str]] = None) -> List[str]:
+    return [f"--wait-for-pid={wait_pid}", mode_flag] + list(carried or [])
 
 
 def find_pid_argument(argv: List[str], prefix: str) -> Optional[int]:

@@ -10,9 +10,10 @@
     launcher  launcher/assets/icons/<stem>.png     32x32 RGBA
     wizard    launcher/assets/icons/<stem>.png     64x64 RGBA (New-device wizard pivots)
     toolbar   launcher/assets/icons/<stem>.png     48x48 RGBA (main-window toolbar buttons)
+    dialog    launcher/assets/icons/<stem>_<px>.png  branded-dialog icons, per DPI scale
     badges    launcher/assets/icons/badge_<key>.png  CPU-arch badges (no SVG source)
-    band      cerf/assets/about_band_<pct>.png     About-box band, per DPI scale
-    logo      cerf/assets/cerf_1024.png            app mark, cerf.exe + launcher
+    band      cerf/assets/about_band_<pct>.png     branded-dialog band, per DPI scale
+    logo      cerf/assets/cerf_1024.png            app mark, cerf.exe
 
 Each .ico carries every size as its own resvg-rendered frame (vector rendered
 natively at each pixel size, not one bitmap downscaled), so small sizes stay
@@ -50,16 +51,16 @@ TOOLBAR_SIZE = 48
 TOOLBAR_STEMS = ("new_device", "start_device", "refresh_remote",
                  "update_from_remote", "delete_device", "discard_state",
                  "help", "settings", "feedback")
-DIALOG_SIZE = 48
-DIALOG_STEMS = ("cerf_error",)
-LAUNCHER_ONLY_STEMS = WIZARD_STEMS + TOOLBAR_STEMS + DIALOG_STEMS
+DIALOG_SIZES = (32, 40, 48, 64, 96)
+DIALOG_STEMS = ("cerf_error", "cerf", "cerf_setup")
+LAUNCHER_ONLY_STEMS = WIZARD_STEMS + TOOLBAR_STEMS
 
 REPO = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO / "cerf" / "assets" / "icons_sources"
 ICO_DIR = REPO / "cerf" / "assets"
 LAUNCHER_DIR = REPO / "launcher" / "assets" / "icons"
 
-CE_ICO_STEMS = ("launcher", "cerf")
+CE_ICO_STEMS = ("cerf",)
 CE_ICO_SIZES = (16, 32)
 
 CE2_ICO_SOURCES = {"cerf": "cerf_vga"}   # output stem -> svg stem
@@ -330,10 +331,11 @@ def build_dialog_pngs(names):
         svg = SRC_DIR / f"{stem}.svg"
         if not svg.exists():
             sys.exit(f"source not found: {svg}")
-        out = LAUNCHER_DIR / f"{stem}.png"
-        write_if_changed(out, render_png(svg, DIALOG_SIZE))
-        print(f"{svg.name} -> {out.relative_to(REPO)}  "
-              f"({DIALOG_SIZE}x{DIALOG_SIZE})")
+        for px in DIALOG_SIZES:
+            out = LAUNCHER_DIR / f"{stem}_{px}.png"
+            write_if_changed(out, render_png(svg, px))
+        print(f"{svg.name} -> {LAUNCHER_DIR.relative_to(REPO)}/{stem}_<px>.png  "
+              f"({','.join(map(str, DIALOG_SIZES))})")
 
 
 def build_toolbar_pngs(names):

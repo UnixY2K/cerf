@@ -12,6 +12,7 @@ from app_paths import resolve_devices_dir, resolve_icon
 from device_state import parse_cerf_json, write_cerf_json
 from persisted_options import effective_values
 from screen_geometry import fit_geometry, screen_work_area
+from transactional_about import run_about
 from transactional_customizations import run_customizations
 from transactional_settings import run_settings
 from transactional_share_folder import run_share_folder
@@ -21,6 +22,7 @@ import ui_theme as theme
 TRANSACTIONAL_COMMAND = "transactional"
 
 _SCAFFOLDINGS = {
+    "about": run_about,
     "customizations": run_customizations,
     "settings": run_settings,
     "share_folder": run_share_folder,

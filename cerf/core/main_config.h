@@ -28,7 +28,6 @@ inline constexpr char kArgGaShareFolder[]  = "--ga-share-folder=";
 inline constexpr char kArgBoot[]           = "--boot=";
 inline constexpr char kArgTab[]            = "--tab=";
 inline constexpr char kArgFullScreen[]     = "--full-screen";
-inline constexpr char kArgAbout[]          = "--about";
 
 enum class ArgParseResult {
     Run,

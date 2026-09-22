@@ -115,4 +115,22 @@ Copy-Item $built $bundledExe -Force
 $exe = Get-Item $bundledExe
 Write-Host "[LAUNCHER] OK: $($exe.FullName)"
 Write-Host "[LAUNCHER] Size: $($exe.Length) bytes"
+
+$installerName = "cerf_installer"
+Write-Host "[LAUNCHER] Building $installerName.exe ($Config)..."
+& $python -m PyInstaller --noconfirm --clean --distpath $dist --workpath $build cerf_installer.spec
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[LAUNCHER] FAILED! PyInstaller returned $LASTEXITCODE for $installerName"
+    [Environment]::Exit(1)
+}
+
+$installerExe = Join-Path $dist "$installerName.exe"
+if (-not (Test-Path $installerExe)) {
+    Write-Host "[LAUNCHER] FAILED! Expected $installerExe not produced."
+    [Environment]::Exit(1)
+}
+
+$installer = Get-Item $installerExe
+Write-Host "[LAUNCHER] OK: $($installer.FullName)"
+Write-Host "[LAUNCHER] Size: $($installer.Length) bytes"
 [Environment]::Exit(0)

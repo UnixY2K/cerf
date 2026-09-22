@@ -24,7 +24,8 @@ The launcher owns three jobs:
 | (none) | The full window opens. This is the normal mode. |
 | `sync <command> …` | Console mode. `launcher_cli.py` downloads, updates or deletes bundles. |
 | `transactional <device> <file>` | One configuration dialog opens. See § Transactional mode. |
-| `--upgrade`, `--post-upgrade` | The two stages of the self-update. |
+| `--upgrade`, `--install`, `--post-upgrade` | The stages that put a build in place. See § Installing and uninstalling. |
+| `--uninstall` | The uninstaller opens. See § Installing and uninstalling. |
 
 `devices_dir` is always `<exe dir>/devices`, the same tree `cerf.exe` reads.
 
@@ -186,6 +187,29 @@ The launcher reads its board knowledge from `bundled/db.json`, which
 `cerf.exe` reads too. Neither program keeps a second copy, so a board the
 launcher lists and a board CERF boots can never disagree.
 
+## Installing and uninstalling
+
+`cerf_installer.exe` is what a user downloads from the website. It is a second
+PyInstaller build of the same `launcher/` tree. It belongs to no installation,
+so the build keeps it out of `bundled/` and out of the build output. CI uploads
+it to its own R2 prefix on every push to the main branch.
+
+**An installer is as old as the day the user downloaded it. It therefore stages
+a release and hands control to the launcher in that release.** The installer
+ends when the staged `launcher.exe` starts. Everything that shapes an
+installation belongs to the launcher, so the newest build always decides it. A
+step that moves into the installer is a step that an old download performs its
+own way.
+
+The stage that puts the files in place is the one the self-update already uses.
+`--install` marks it as a first installation, and `--upgrade` marks it as a
+replacement. The installer also sends the choices that the user made.
+
+`--uninstall` empties the installation directory. The user data in that
+directory stays, unless the user asked for it to go too. Windows locks a running
+image, so `launcher.exe` cannot delete itself. A detached `cmd.exe` waits for
+the process to exit, then removes the file.
+
 ## Self-update
 
 `update_source.py` picks the channel from the global `cerf.json`: the latest
@@ -219,5 +243,7 @@ top-level `build.ps1` runs it when any launcher file changes, and
 
 - **Never run the launcher yourself.** It downloads ROM bundles and rewrites the
   device tree of the user.
+- **Never run the installer yourself.** It writes to the installation
+  directory, the Start menu and the registry.
 - A new setting goes in the launcher, never in a new `cerf.exe` dialog.
 - `cerf.exe` reads `cerf-user.json`. Only the window-resize path writes it.
