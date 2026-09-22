@@ -1,12 +1,13 @@
 #include "cs4297a_codec.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 
 bool Cs4297aCodec::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetBoard() == Board::SiemensMP377;
+    return board && board->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void Cs4297aCodec::OnReady() {

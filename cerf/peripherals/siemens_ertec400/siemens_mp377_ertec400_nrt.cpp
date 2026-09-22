@@ -5,6 +5,7 @@
 #include "siemens_mp377_ertec400.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../cpu/emulated_memory.h"
 #include "../../net/network_backend.h"
@@ -160,7 +161,7 @@ SiemensMp377Ertec400Nrt::~SiemensMp377Ertec400Nrt() = default;
 
 bool SiemensMp377Ertec400Nrt::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetBoard() == Board::SiemensMP377;
+    return board && board->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377Ertec400Nrt::OnReady() {

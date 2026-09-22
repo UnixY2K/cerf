@@ -3,6 +3,7 @@
 #include "casio_toricomail_asic.h"
 
 #include "../../boards/board_context.h"
+#include "casio_toricomail_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../host/panel_frame_renderer.h"
 #include "../../lcd/panel_scanout.h"
@@ -21,7 +22,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::CasioToricomail;
+        return bd && bd->GetBoardId() == BoardId::CasioToricomail;
     }
 
     void PresentedSize(uint32_t& w, uint32_t& h) override {

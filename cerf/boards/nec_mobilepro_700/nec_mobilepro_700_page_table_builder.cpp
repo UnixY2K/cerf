@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../board_context.h"
+#include "nec_mobilepro_700_id.h"
 
 #include <cstdint>
 #include <vector>
@@ -30,7 +31,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::NecMobilePro700;
+        return bd && bd->GetBoardId() == BoardId::NecMobilepro700;
     }
 
     uint32_t VaToPa(uint32_t va) const override {

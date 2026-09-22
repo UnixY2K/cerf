@@ -1,6 +1,7 @@
 #include "../board_ata_service.h"
 
 #include "../board_context.h"
+#include "zune_30_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/device_config.h"
 #include "../../core/log.h"
@@ -54,7 +55,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::ZuneKeel;
+        return bd && bd->GetBoardId() == BoardId::Zune30;
     }
 
     std::string GetImagePath() override {

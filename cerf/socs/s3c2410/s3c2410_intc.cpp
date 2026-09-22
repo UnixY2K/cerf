@@ -9,6 +9,7 @@
 #include "../../peripherals/peripheral_base.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../boards/board_context.h"
+#include "s3c2410_id.h"
 #include "../../state/state_stream.h"
 #include "s3c2410_eint_source.h"
 #include "s3c2410_sub_source_levels.h"
@@ -24,7 +25,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::S3C2410;
+        return bd && bd->GetSocId() == SocId::S3c2410;
     }
 
     /* IrqController API. */
@@ -310,7 +311,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::S3C2410;
+        return bd && bd->GetSocId() == SocId::S3c2410;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

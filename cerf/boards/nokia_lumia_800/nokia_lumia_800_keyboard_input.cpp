@@ -4,6 +4,7 @@
 #include "../../host/keyboard_router.h"
 #include "../../peripherals/qualcomm_pm8058/pm8058_keypad.h"
 #include "../board_context.h"
+#include "nokia_lumia_800_id.h"
 
 #include <cstdint>
 
@@ -18,7 +19,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::NokiaLumia800;
+        return bd && bd->GetBoardId() == BoardId::NokiaLumia800;
     }
 
     void OnReady() override { emu_.Get<KeyboardRouter>().Register(this); }

@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "../../socs/imx31/imx31_id.h"
 
 namespace {
 
@@ -11,7 +12,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::iMX31;
+        return bd && bd->GetSocId() == SocId::Imx31;
     }
 
     /* ARM DDI 0100I "Reading the program counter" (p. A2-9): STR/STM of R15

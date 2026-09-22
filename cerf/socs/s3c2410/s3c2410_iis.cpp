@@ -1,6 +1,7 @@
 #include "../../peripherals/peripheral_base.h"
 
 #include "../../boards/board_context.h"
+#include "s3c2410_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../core/log.h"
@@ -89,7 +90,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::S3C2410;
+        return bd && bd->GetSocId() == SocId::S3c2410;
     }
 
     void OnReady() override {

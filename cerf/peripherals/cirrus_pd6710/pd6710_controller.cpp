@@ -4,6 +4,7 @@
 #include "pd6710_management_irq_line.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/smdk2410_devemu/devemu_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../host/host_widget_registry.h"
@@ -32,7 +33,7 @@ Pd6710Controller::Pd6710Controller(CerfEmulator& emu)
 
 bool Pd6710Controller::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::Smdk2410DevEmu;
+    return bd && bd->GetBoardId() == BoardId::Devemu;
 }
 
 void Pd6710Controller::OnReady() {

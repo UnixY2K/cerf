@@ -1,6 +1,7 @@
 #include "msm8255_crci_bus.h"
 
 #include "../../boards/board_context.h"
+#include "msm8255_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 
@@ -8,7 +9,7 @@ REGISTER_SERVICE(Msm8255CrciBus);
 
 bool Msm8255CrciBus::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::MSM8255;
+    return bd && bd->GetSocId() == SocId::Msm8255;
 }
 
 void Msm8255CrciBus::Register(Msm8255CrciClient* client) {

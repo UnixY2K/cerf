@@ -3,6 +3,7 @@
 #include "siemens_mp377_smi_bridge.h"
 
 #include "../../boards/board_context.h"
+#include "siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../socs/guest_cpu_reset.h"
@@ -15,7 +16,7 @@ namespace siemens_mp377 {
 
 bool SiemensMp377SmiBridge::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::SiemensMP377;
+    return bd && bd->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377SmiBridge::OnReady() {

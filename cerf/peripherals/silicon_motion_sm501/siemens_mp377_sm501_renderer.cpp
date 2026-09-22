@@ -5,6 +5,7 @@
 
 #include "../../peripherals/peripheral_base.h"
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../host/frame_renderer.h"
 #include "../../host/panel_frame_renderer.h"
@@ -38,7 +39,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::SiemensMP377;
+        return bd && bd->GetBoardId() == BoardId::SiemensMp377;
     }
 
     void OnReady() override { BuildRgb565ToXrgbLut(rgb565_to_xrgb_); }

@@ -6,6 +6,7 @@
 #include "../../host/panel_frame_renderer.h"
 #include "../../lcd/panel_scanout.h"
 #include "../board_context.h"
+#include "nokia_lumia_800_id.h"
 
 namespace {
 
@@ -17,7 +18,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::NokiaLumia800;
+        return bd && bd->GetBoardId() == BoardId::NokiaLumia800;
     }
 
     void PresentedSize(uint32_t& w, uint32_t& h) override {

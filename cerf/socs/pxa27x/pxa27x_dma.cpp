@@ -1,6 +1,7 @@
 #include "pxa27x_dma.h"
 
 #include "../../boards/board_context.h"
+#include "pxa270_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
@@ -40,7 +41,7 @@ enum : uint32_t {
 
 bool Pxa27xDma::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::PXA27x;
+    return bd && bd->GetSocId() == SocId::Pxa270;
 }
 
 void Pxa27xDma::OnReady() {

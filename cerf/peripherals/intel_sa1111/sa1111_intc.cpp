@@ -2,13 +2,14 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "../../boards/jornada720/jornada_720_id.h"
 #include "../../socs/sa11xx/sa11xx_gpio.h"
 #include "../peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 
 bool Sa1111Intc::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::Jornada720;
+    return bd && bd->GetBoardId() == BoardId::Jornada720;
 }
 
 void Sa1111Intc::OnReady() {

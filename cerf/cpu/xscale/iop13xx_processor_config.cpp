@@ -1,6 +1,7 @@
 #include "xscale_processor_config_base.h"
 
 #include "../../boards/board_context.h"
+#include "../../socs/iop13xx/iop13xx_id.h"
 #include "../../core/cerf_emulator.h"
 
 namespace {
@@ -10,7 +11,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::IOP13xx;
+        return bd && bd->GetSocId() == SocId::Iop13xx;
     }
     /* Linux v3.18 arch/arm/mm/proc-xsc3.S identifies Intel XSC3 with
        MIDR value/mask 0x69056000/0xffffe000. */

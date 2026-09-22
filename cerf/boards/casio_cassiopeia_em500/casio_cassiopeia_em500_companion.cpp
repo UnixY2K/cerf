@@ -1,6 +1,7 @@
 #include "casio_cassiopeia_em500_companion.h"
 
 #include "../board_context.h"
+#include "casio_cassiopeia_em500_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../peripherals/peripheral_dispatcher.h"
@@ -165,7 +166,7 @@ constexpr uint32_t kOffEdgeCfgHi = 0xA07Eu;
 
 bool CasioCassiopeiaEm500Companion::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::CasioCassiopeiaEm500;
+    return bd && bd->GetBoardId() == BoardId::CasioCassiopeiaEm500;
 }
 
 void CasioCassiopeiaEm500Companion::OnReady() {

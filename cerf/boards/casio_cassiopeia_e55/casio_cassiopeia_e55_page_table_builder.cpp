@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../board_context.h"
+#include "casio_cassiopeia_e55_id.h"
 
 #include <cstdint>
 #include <vector>
@@ -34,7 +35,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::CasioCassiopeiaE55;
+        return bd && bd->GetBoardId() == BoardId::CasioCassiopeiaE55;
     }
 
     uint32_t VaToPa(uint32_t va) const override {

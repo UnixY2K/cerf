@@ -33,8 +33,8 @@ class TransactionalContext:
         self.device_dir = device_dir
         self.owner_hwnd = owner_hwnd
         self.meta, width, height = parse_cerf_json(device_dir / "cerf.json")
-        self.baseline, self.effective = effective_values(device_dir, width,
-                                                         height)
+        self.baseline, self.effective = effective_values(
+            device_dir, width, height, self.meta.board_id)
 
     def present(self, dlg: tk.Toplevel) -> None:
         dlg.update_idletasks()

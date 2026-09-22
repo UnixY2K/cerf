@@ -5,6 +5,7 @@
 #include "../../core/log.h"
 #include "../../core/service.h"
 #include "../../boards/board_context.h"
+#include "ford_sync_2_id.h"
 #include "../../host/host_icon_cache.h"
 #include "../../host/host_widget.h"
 #include "../../host/host_widget_registry.h"
@@ -34,7 +35,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::FordSyncGen2;
+        return bd && bd->GetBoardId() == BoardId::FordSync2;
     }
 
     void OnReady() override {

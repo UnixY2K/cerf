@@ -1,6 +1,7 @@
 #include "vr4111_bus_error.h"
 
 #include "../../boards/board_context.h"
+#include "vr4111_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../state/state_stream.h"
 #include "../guest_cpu_reset.h"
@@ -17,7 +18,7 @@ constexpr uint16_t kSysint1WrBerr = 1u << 10;
 
 bool Vr4111BusError::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::VR4111;
+    return bd && bd->GetSocId() == SocId::Vr4111;
 }
 
 void Vr4111BusError::OnReady() {

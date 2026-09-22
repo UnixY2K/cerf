@@ -1,6 +1,7 @@
 #include "../intel_command_set_flash.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/philips_nino_300/philips_nino_300_id.h"
 #include "../../boot/rom_parser_service.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
@@ -25,7 +26,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::PhilipsNino300;
+        return bd && bd->GetBoardId() == BoardId::PhilipsNino300;
     }
 
     void OnReady() override {

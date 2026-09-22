@@ -5,6 +5,7 @@
 #include "../../core/log.h"
 #include "../../core/string_utils.h"
 #include "../../boards/board_context.h"
+#include "imx31_id.h"
 #include "../../boards/board_ata_service.h"
 #include "../../host/host_widget.h"
 #include "../../host/host_widget_registry.h"
@@ -65,7 +66,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::iMX31;
+        return bd && bd->GetSocId() == SocId::Imx31;
     }
     void OnReady() override {
         auto& bas = emu_.Get<BoardAtaService>();

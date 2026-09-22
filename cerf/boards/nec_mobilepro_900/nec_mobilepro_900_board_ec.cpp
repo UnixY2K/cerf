@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "nec_mobilepro_900_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 
@@ -19,7 +20,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::NecMobilePro900;
+        return bd && bd->GetBoardId() == BoardId::NecMobilepro900;
     }
     void OnReady() override { emu_.Get<PeripheralDispatcher>().Register(this); }
 

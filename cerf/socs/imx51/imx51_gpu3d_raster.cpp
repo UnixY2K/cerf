@@ -5,6 +5,7 @@
 #include "../../core/fatal.h"
 #include "../../state/state_stream.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -23,7 +24,7 @@ static uint32_t ApproximateDitherQuantize(float channel, uint32_t maximum, unsig
 REGISTER_SERVICE(Imx51Gpu3dRaster);
 bool Imx51Gpu3dRaster::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetSoc() == SocFamily::iMX51;
+    return board && board->GetSocId() == SocId::Imx51;
 }
 void Imx51Gpu3dRaster::SaveState(StateWriter& writer) {
     writer.Write(gmem_binding_); writer.Write(gmem_pitch_);

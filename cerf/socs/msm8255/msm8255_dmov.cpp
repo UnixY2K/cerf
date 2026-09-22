@@ -1,4 +1,5 @@
 #include "../../boards/board_context.h"
+#include "msm8255_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../jit/guest_cycle_clock.h"
@@ -58,7 +59,7 @@ public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
-        return emu_.Get<BoardContext>().GetSoc() == SocFamily::MSM8255;
+        return emu_.Get<BoardContext>().GetSocId() == SocId::Msm8255;
     }
 
     void OnReady() override {

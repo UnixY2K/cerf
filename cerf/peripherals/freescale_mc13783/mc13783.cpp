@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "../../boards/zune_keel/zune_30_id.h"
 #include "../../cpu/arm_processor_config.h"
 #include "../../jit/arm/arm_jit.h"
 #include "../../jit/arm/cpu_state.h"
@@ -37,7 +38,7 @@ Mc13783::~Mc13783() { StopRebaseThread(); }
 
 bool Mc13783::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::ZuneKeel;
+    return bd && bd->GetBoardId() == BoardId::Zune30;
 }
 
 void Mc13783::OnReady() {

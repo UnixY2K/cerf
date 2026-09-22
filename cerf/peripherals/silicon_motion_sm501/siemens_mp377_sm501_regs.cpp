@@ -6,6 +6,7 @@
 #include "siemens_mp377_sm501_register_map.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../peripherals/peripheral_dispatcher.h"
@@ -28,7 +29,7 @@ constexpr uint32_t kMp377Sm501IrqContributor = 1u << 1;
 
 bool SiemensMp377Sm501Regs::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::SiemensMP377;
+    return bd && bd->GetBoardId() == BoardId::SiemensMp377;
 }
 void SiemensMp377Sm501Regs::OnReady() {
     ResetDevice(false);

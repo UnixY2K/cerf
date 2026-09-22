@@ -1,6 +1,7 @@
 #include "../vr41xx/vr41xx_siu.h"
 
 #include "../../boards/board_context.h"
+#include "vr4102_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../state/state_stream.h"
 
@@ -14,7 +15,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::VR4102;
+        return bd && bd->GetSocId() == SocId::Vr4102;
     }
 
 protected:

@@ -1,6 +1,7 @@
 #include "pxa255_ac97.h"
 
 #include "../../boards/board_context.h"
+#include "pxa255_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../host/audio_activity_widget.h"
@@ -15,7 +16,7 @@ REGISTER_SERVICE(Pxa255Ac97);
 
 bool Pxa255Ac97::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::PXA25x;
+    return bd && bd->GetSocId() == SocId::Pxa255;
 }
 
 /* Stop the audio thread before any peer its completion callback re-enters is

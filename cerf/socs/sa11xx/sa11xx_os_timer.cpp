@@ -2,6 +2,8 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "sa1110_id.h"
+#include "sa1100_id.h"
 #include "sa11xx_intc.h"
 
 namespace {
@@ -19,7 +21,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && (bd->GetSoc() == SocFamily::SA1110 || bd->GetSoc() == SocFamily::SA1100);
+        return bd && (bd->GetSocId() == SocId::Sa1110 || bd->GetSocId() == SocId::Sa1100);
     }
 
     uint32_t MmioBase() const override { return 0x90000000u; }

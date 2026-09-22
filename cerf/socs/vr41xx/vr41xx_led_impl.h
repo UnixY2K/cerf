@@ -84,7 +84,7 @@ const COLORREF kClrDark     = RGB(50, 55, 50);
 const COLORREF kClrRim      = RGB(90, 95, 90);
 const COLORREF kClrRimBlink = RGB(120, 230, 130);
 
-template <SocFamily Soc, uint32_t Base>
+template <const std::string_view& Soc, uint32_t Base>
 class Vr41xxLedBase : public Peripheral, public HostWidget {
 public:
     using Peripheral::Peripheral;
@@ -94,7 +94,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == Soc;
+        return bd && bd->GetSocId() == Soc;
     }
     void OnReady() override {
         hltc_anchor_ = Clock::now();

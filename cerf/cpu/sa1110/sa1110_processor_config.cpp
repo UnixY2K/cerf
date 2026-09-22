@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "../../socs/sa11xx/sa1110_id.h"
 
 namespace {
 
@@ -11,7 +12,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::SA1110;
+        return bd && bd->GetSocId() == SocId::Sa1110;
     }
 
     /* SA-1110 Dev Manual §5.2.1 (Arch 01 = v4, Part B11 = SA1110);

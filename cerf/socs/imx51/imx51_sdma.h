@@ -9,13 +9,14 @@
 #include "imx51_uart1.h"
 #include "imx51_uart3.h"
 #include "../../core/cerf_emulator.h"
+#include "imx51_id.h"
 
 /* SDMA AP interrupt = TZIC source 6 (MCIMX51RM Table 3-2, ARM Domain Interrupt
    Summary). */
 constexpr uint32_t kTzicSourceSdma = 6u;
 
 class Imx51Sdma : public cerf_freescale_sdma_detail::FreescaleSdmaBase<0x83FB0000u,
-                                                                      SocFamily::iMX51> {
+                                                                      SocId::Imx51> {
 public:
     using FreescaleSdmaBase::FreescaleSdmaBase;
 

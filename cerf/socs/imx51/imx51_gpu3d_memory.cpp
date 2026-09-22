@@ -4,12 +4,13 @@
 #include "../../core/fatal.h"
 #include "../../cpu/emulated_memory.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 
 REGISTER_SERVICE(Imx51Gpu3dMemory);
 
 bool Imx51Gpu3dMemory::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetSoc() == SocFamily::iMX51;
+    return board && board->GetSocId() == SocId::Imx51;
 }
 
 uint8_t* Imx51Gpu3dMemory::ReadSpan(uint64_t pa, uint64_t size, uint32_t mmu_config) {

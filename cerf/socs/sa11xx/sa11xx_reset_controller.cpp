@@ -5,6 +5,8 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "sa1110_id.h"
+#include "sa1100_id.h"
 #include "../../host/guest_deep_sleep.h"
 #include "../../jit/guest_engine.h"
 #include "../../peripherals/peripheral_dispatcher.h"
@@ -26,7 +28,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && (bd->GetSoc() == SocFamily::SA1110 || bd->GetSoc() == SocFamily::SA1100);
+        return bd && (bd->GetSocId() == SocId::Sa1110 || bd->GetSocId() == SocId::Sa1100);
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

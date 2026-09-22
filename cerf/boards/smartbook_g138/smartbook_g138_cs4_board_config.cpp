@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../board_context.h"
+#include "smartbook_g138_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 
@@ -20,7 +21,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::SmartBookG138;
+        return bd && bd->GetBoardId() == BoardId::SmartbookG138;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

@@ -1,6 +1,7 @@
 #include "pxa27x_keypad.h"
 
 #include "../../boards/board_context.h"
+#include "pxa270_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
@@ -41,7 +42,7 @@ constexpr int kIntcKeypadBit = 4;
 
 bool Pxa27xKeypad::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::PXA27x;
+    return bd && bd->GetSocId() == SocId::Pxa270;
 }
 
 void Pxa27xKeypad::OnReady() {

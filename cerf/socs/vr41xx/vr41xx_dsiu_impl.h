@@ -73,14 +73,14 @@ struct Vr41xxDsiuModel {
     bool     portreg_retained_on_reset;   /* PORTREG After-reset row */
 };
 
-template <SocFamily Soc, Vr41xxDsiuModel M>
+template <const std::string_view& Soc, Vr41xxDsiuModel M>
 class Vr41xxDsiuBase : public Peripheral {
 public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == Soc;
+        return bd && bd->GetSocId() == Soc;
     }
 
     void OnReady() override {

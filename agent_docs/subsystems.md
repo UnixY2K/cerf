@@ -37,7 +37,7 @@ state are forbidden.
   true for one Base, a required slot with no winner, or a
   `ShouldRegister`↔`Get` cycle. You need no defensive check around `Get<>`.
 - **`ShouldRegister()`** can call `Get<>`/`TryGet<>` through the same lazy
-  path. The idiom is `emu_.Get<BoardContext>().GetSoc() == SocFamily::X`.
+  path. The idiom is `emu_.Get<BoardContext>().GetSocId() == SocId::X`.
 
 - `cerf/core/cerf_emulator.h`, `cerf/core/service.h`
 
@@ -49,7 +49,7 @@ code, translated to host x86 on the fly. This covers
 userspace EXEs / driver DLLs. `JitRunner` drives an abstract `GuestEngine`
 service. The concrete engine implements it for the CPU architecture of the
 board, and `BoardContext::GetCpuArch()` selects it. Per-SoC variation lives
-in per-core strategy services that `GetSoc()` selects. Per-SoC variation is
+in per-core strategy services that `GetSocId()` selects. Per-SoC variation is
 never an `if (soc == X)` branch in the JIT body.
 
 - `cerf/jit/`, [agent_docs/jit.md](jit.md)
@@ -71,26 +71,27 @@ Poseidon, … arrive with their boards). It contains:
   and more.
 
 The `ShouldRegister` of a concrete returns
-`emu_.Get<BoardContext>().GetSoc() == SocFamily::X`. Chip-layer code
+`emu_.Get<BoardContext>().GetSocId() == SocId::X`. Chip-layer code
 never knows its board. It knows only its chip.
 
 The VA→PA placement map (`PageTableBuilder`) is **not** here. The core
 CPU strategies (`ArmProcessorConfig`, `CoprocEmitter`) split on a different
 axis. VA→PA placement is a BSP/board choice, because the OEMAddressTable
 differs per board. Its concretes live under `cerf/boards/<board>/`, and
-`GetBoard()` selects them. The core strategies are a CPU-arch property
+`GetBoardId()` selects them. The core strategies are a CPU-arch property
 identical across every board on that core. Their concretes live under
-`cerf/cpu/<core>/`, and `GetSoc()` selects them. A core strategy gated on
-`GetBoard()` leaves every additional board on that SoC with no winner. A
+`cerf/cpu/<core>/`, and `GetSocId()` selects them. A core strategy gated on
+`GetBoardId()` leaves every additional board on that SoC with no winner. A
 second SA-1110 board that re-states the MIDR of the die is the smell.
 
 ### `cerf/boards/<board>/` - one specific OEM board / BSP
 
 One directory per supported board. It contains:
 
-- `<board>_context.cpp` - the concrete `BoardContext` impl. It reports the
-  `Board`, `SocFamily`, `CpuArch`, and `RomPlacingMode` constants for that
-  board. It registers when the configured `board_id` names it
+- `<board>_context.cpp` - the concrete `BoardContext` impl. It returns the
+  board's id constant, and the base answers everything else from the
+  board's `bundled/db.json` row (`agent_docs/database.md`). It registers
+  when the configured `board_id` names it
 - `<board>_page_table_builder.cpp` - the `PageTableBuilder` impl of the
   board: the BSP OEMAddressTable VA→PA map, the DRAM/flash backed regions,
   and the bootloader-handoff SP. ROM placement and pre-MMU boot use it
@@ -101,7 +102,7 @@ One directory per supported board. It contains:
   which fills a DRAM struct that the BSP reads on boot)
 
 The `ShouldRegister` of a concrete returns
-`emu_.Get<BoardContext>().GetBoard() == Board::X`. The BoardContext of a
+`emu_.Get<BoardContext>().GetBoardId() == BoardId::X`. The BoardContext of a
 board is the only thing that must know its board name. Everything else asks
 only "am I on board X".
 
@@ -113,8 +114,8 @@ new sibling directories (for example `davicom_dm9000/` for the DM9000 NIC IC).
 
 The `ShouldRegister` of a concrete compares against a board list:
 
-    auto b = emu_.Get<BoardContext>().GetBoard();
-    return b == Board::X || b == Board::Y;
+    auto b = emu_.Get<BoardContext>().GetBoardId();
+    return b == BoardId::X || b == BoardId::Y;
 
 The list grows when a new board adopts the same part. The part file is
 never duplicated. The part directory is the single source of truth
@@ -275,6 +276,25 @@ concretes (strategy pattern, selected by `BoardContext`).
   guest panel-enable edge. The call carries no dimensions. The call tells the
   host to read the new size from `FrameRenderer::PresentedSize`.
   - `cerf/host/host_window.{h,cpp}`
+
+- **The panel code is the only authority on the guest resolution. Two
+  states sit outside it, and one board fact serves both.** The guest signals
+  its resolution to the LCD peripheral, and the window follows that edge.
+  Before the guest runs, no such signal exists, and the window already needs
+  a size. Guest additions replace the display driver, so they need a size of
+  their own.
+
+  A board declares its panel size in the board database, and CERF opens the
+  window at that size. When the guest signals the same size, the user sees
+  no window resize. A panel that reports a different size wins.
+
+  When the user sets no guest-additions resolution override, guest additions
+  take that same board fact. The launcher resolves that order too.
+
+  **A default that is too large breaks many guests.** A board whose panel the
+  user can change therefore declares the size it uses by default. When no single
+  size is right for the board, it declares none, and the window opens at the
+  CERF default.
 
 - **`HostCanvas`** - the child window for the drawable area. It owns the
   **tabs** (`Tab::Boot` = boot screen, `Tab::Hw` = hardware text console,

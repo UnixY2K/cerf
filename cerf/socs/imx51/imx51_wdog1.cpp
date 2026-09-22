@@ -1,6 +1,7 @@
 #include "../freescale_wdog_impl.h"
 
 #include "../../state/state_stream.h"
+#include "imx51_id.h"
 
 namespace {
 
@@ -18,7 +19,7 @@ constexpr uint16_t kWmcrReset = 0x0001u;  /* PDE=1 (MCIMX51RM Table 62-9)     */
 /* i.MX51 WDOG1 (MCIMX51RM Ch 62) at PA 0x73F9_8000 - five 16-bit registers
    (adds WICR/WMCR over i.MX31). The guest services the dog (WSR 0x5555/0xAAAA)
    every cycle and reads WRSR for the boot reason. */
-class Imx51Wdog1 : public FreescaleWdogBase<0x73F98000u, SocFamily::iMX51> {
+class Imx51Wdog1 : public FreescaleWdogBase<0x73F98000u, SocId::Imx51> {
 public:
     using FreescaleWdogBase::FreescaleWdogBase;
 

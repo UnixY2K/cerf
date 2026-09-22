@@ -2,6 +2,7 @@
 #include "imx51_nand_layout.h"
 
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../boot/sec_flash.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/cerf_paths.h"
@@ -26,7 +27,7 @@ static bool FileNonEmpty(const std::string& path) {
 
 bool Imx51NandStore::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    if (!bd || bd->GetSoc() != SocFamily::iMX51) return false;
+    if (!bd || bd->GetSocId() != SocId::Imx51) return false;
     auto* sf = emu_.TryGet<SecFlash>();
     if (sf && sf->IsPresent()) return true;   /* can seed/flash from the `.sec` */
     return FileNonEmpty(ImagePath());         /* else: an already-flashed nand.img */

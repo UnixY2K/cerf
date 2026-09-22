@@ -4,13 +4,14 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../board_context.h"
+#include "ford_sync_2_id.h"
 #include "../../state/state_stream.h"
 
 #include <cstdint>
 
 bool FordSync2VmcuDiagChannel::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::FordSyncGen2;
+    return bd && bd->GetBoardId() == BoardId::FordSync2;
 }
 
 void FordSync2VmcuDiagChannel::HandleInbound(uint8_t cid, const uint8_t* msg,

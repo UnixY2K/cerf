@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_p177/siemens_p177_id.h"
 #include "../../state/state_stream.h"
 
 #include <cstdint>
@@ -44,7 +45,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::SiemensP177;
+        return bd && bd->GetBoardId() == BoardId::SiemensP177;
     }
     void OnReady() override { emu_.Get<PeripheralDispatcher>().Register(this); }
 

@@ -4,6 +4,7 @@
 #include "imx51_gpu3d_shader.h"
 #include "imx51_gpu3d_raster.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../state/state_stream.h"
@@ -16,7 +17,7 @@ REGISTER_SERVICE(Imx51Gpu3dDraw);
 
 bool Imx51Gpu3dDraw::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetSoc() == SocFamily::iMX51;
+    return board && board->GetSocId() == SocId::Imx51;
 }
 
 [[noreturn]] void Imx51Gpu3dDraw::Reject(const char* reason, uint64_t value) {

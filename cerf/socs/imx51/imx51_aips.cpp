@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 
@@ -69,7 +70,7 @@ public:
     using Imx51AipsBase::Imx51AipsBase;
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::iMX51;
+        return bd && bd->GetSocId() == SocId::Imx51;
     }
     void OnReady() override { emu_.Get<PeripheralDispatcher>().Register(this); }
     uint32_t MmioBase() const override { return 0x73F00000u; }
@@ -80,7 +81,7 @@ public:
     using Imx51AipsBase::Imx51AipsBase;
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::iMX51;
+        return bd && bd->GetSocId() == SocId::Imx51;
     }
     void OnReady() override { emu_.Get<PeripheralDispatcher>().Register(this); }
     uint32_t MmioBase() const override { return 0x83F00000u; }

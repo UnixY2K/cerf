@@ -4,6 +4,7 @@
 #include "siemens_mp377_sm501_audio_mcu.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../host/audio_activity_widget.h"
@@ -21,7 +22,7 @@ namespace siemens_mp377 {
 
 bool SiemensMp377Sm501AudioOutput::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetBoard() == Board::SiemensMP377;
+    return board && board->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377Sm501AudioOutput::OnReady() {

@@ -8,6 +8,7 @@
 #include "../../peripherals/peripheral_base.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../boards/board_context.h"
+#include "odo_id.h"
 #include "../../state/state_stream.h"
 
 #include <mutex>
@@ -24,7 +25,7 @@ constexpr uint32_t kSlotCpuMr         = 0x04u;
 
 bool OdoArm720BoardIntc::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::OdoArm720;
+    return bd && bd->GetBoardId() == BoardId::Odo;
 }
 
 bool OdoArm720BoardIntc::HasPendingUnmaskedLocked() const {
@@ -207,7 +208,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::OdoArm720;
+        return bd && bd->GetBoardId() == BoardId::Odo;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

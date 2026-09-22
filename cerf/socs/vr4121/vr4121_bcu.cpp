@@ -1,6 +1,7 @@
 #include "../vr41xx/vr41xx_reg_window_impl.h"
 
 #include <cstdint>
+#include "vr4121_id.h"
 
 namespace {
 
@@ -52,7 +53,7 @@ static_assert((0xF55Fu & 0x0AA0u) == 0u,
 static_assert((0xF887u & 0x0778u) == 0u,
               "BCUCNTREG3 writable and read-0 RFU bits overlap");
 
-class Vr4121Bcu : public Vr41xxRegWindowBase<SocFamily::VR4121, kModel> {
+class Vr4121Bcu : public Vr41xxRegWindowBase<SocId::Vr4121, kModel> {
 public:
     using Vr41xxRegWindowBase::Vr41xxRegWindowBase;
 };

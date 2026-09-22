@@ -4,6 +4,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../board_context.h"
+#include "philips_velo_1_id.h"
 
 #include <cstdint>
 #include <vector>
@@ -50,7 +51,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::PhilipsVelo1;
+        return bd && bd->GetBoardId() == BoardId::PhilipsVelo1;
     }
 
     void OnReady() override {

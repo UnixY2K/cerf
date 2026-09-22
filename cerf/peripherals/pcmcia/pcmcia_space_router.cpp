@@ -1,6 +1,9 @@
 #include "pcmcia_space_router.h"
 
 #include "../../boards/board_context.h"
+#include "../../socs/sa11xx/sa1110_id.h"
+#include "../../socs/pxa255/pxa255_id.h"
+#include "../../socs/sa11xx/sa1100_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "pcmcia_slot.h"
@@ -17,9 +20,9 @@ constexpr uint16_t kFloat16 = 0xFFFFu;
 bool PcmciaSpaceRouter::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
     if (!bd) return false;
-    const SocFamily soc = bd->GetSoc();
-    return soc == SocFamily::SA1110 || soc == SocFamily::PXA25x ||
-           soc == SocFamily::SA1100;
+    const std::string_view soc = bd->GetSocId();
+    return soc == SocId::Sa1110 || soc == SocId::Pxa255 ||
+           soc == SocId::Sa1100;
 }
 
 void PcmciaSpaceRouter::OnReady() {

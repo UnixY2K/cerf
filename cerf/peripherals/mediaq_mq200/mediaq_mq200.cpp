@@ -1,6 +1,8 @@
 #include "mediaq_mq200.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/simpad_sl4/simpad_sl4_id.h"
+#include "../../boards/smartbook_g138/smartbook_g138_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../host/host_window.h"
@@ -12,8 +14,8 @@
 bool MediaQMq200::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
     if (!bd) return false;
-    const Board b = bd->GetBoard();
-    return b == Board::SimpadSl4 || b == Board::SmartBookG138;
+    const std::string_view b = bd->GetBoardId();
+    return b == BoardId::SimpadSl4 || b == BoardId::SmartbookG138;
 }
 
 void MediaQMq200::OnReady() {

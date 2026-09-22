@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 
@@ -27,7 +28,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::iMX51;
+        return bd && bd->GetSocId() == SocId::Imx51;
     }
     void OnReady() override {
         for (const auto& r : kResets) regs_[r.off >> 2] = r.val;

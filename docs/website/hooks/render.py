@@ -1,9 +1,9 @@
 """MkDocs hook: fills the placeholders whose content lives outside the site.
 
 {version}         cerf/version.h
-{boards_table}    launcher/supported_devices.py (via compile_readme.py)
+{boards_table}    bundled/db.json (via compile_readme.py)
 {changelog_table} docs/changelog.yml (via changelog.py)
-{stats}           board / SoC / CPU counts, from launcher/supported_devices.py
+{stats}           board / SoC / CPU counts, from bundled/db.json
 {devices}         the front-page device row, from docs/website/devices.yml
 {features}        the front-page feature cards, from docs/website/features.yml
 {articles}        the front-page article cards, from docs/website/articles.yml
@@ -47,7 +47,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import changelog
 import compile_readme
-from supported_devices import BOARDS_INFORMATION
+from board_database import DEVICES, operating_systems_of, soc_family_of
 
 
 def _boards_table():
@@ -66,10 +66,11 @@ def _changelog_table():
 
 
 def _stats():
-    boards = [b for b in BOARDS_INFORMATION if b.get('supported')]
-    socs   = {b['soc'].family for b in boards}
-    cpus   = sorted({b['soc'].cpu for b in boards})
-    oses   = {os_.name for b in boards for os_ in b['operating_systems']}
+    boards = [b for b in DEVICES if b.get('supported')]
+    socs   = {b['soc_id'] for b in boards}
+    cpus   = sorted({soc_family_of(b['id'])['arch'] for b in boards})
+    oses   = {os_['name'] for b in boards
+              for os_ in operating_systems_of(b['id'])}
 
     cells = [
         (str(len(boards)), 'boards'),
@@ -135,7 +136,7 @@ def _devices():
                    '</figcaption>')
         out.append('  </figure>')
 
-    boards = len([b for b in BOARDS_INFORMATION if b.get('supported')])
+    boards = len([b for b in DEVICES if b.get('supported')])
     out.append(f'  <a class="cerf-rail-all" href="{_card_url("devices.md")}">'
                '<span class="cerf-rail-all-mark">&rarr;</span>'
                '<b>All</b>'

@@ -5,6 +5,7 @@
 #include "../../socs/pr31x00/pr31x00_io.h"
 #include "../../state/state_stream.h"
 #include "../board_context.h"
+#include "philips_velo_1_id.h"
 
 #include <array>
 #include <cstdint>
@@ -58,7 +59,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::PhilipsVelo1;
+        return bd && bd->GetBoardId() == BoardId::PhilipsVelo1;
     }
 
     void OnReady() override {

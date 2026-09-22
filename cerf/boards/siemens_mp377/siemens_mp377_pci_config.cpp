@@ -3,6 +3,7 @@
 #include "../../peripherals/siemens_ertec400/siemens_mp377_ertec400.h"
 #include "../../peripherals/silicon_motion_sm501/siemens_mp377_sm501.h"
 #include "../board_context.h"
+#include "siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../state/state_stream.h"
 #include "../../socs/guest_cpu_reset.h"
@@ -18,7 +19,7 @@ public:
 
     bool ShouldRegister() override {
         auto* board = emu_.TryGet<BoardContext>();
-        return board && board->GetBoard() == Board::SiemensMP377;
+        return board && board->GetBoardId() == BoardId::SiemensMp377;
     }
 
     void OnReady() override {

@@ -22,7 +22,7 @@ LoadIconWithScaleDown (see HostIconCache).
 The launcher renders icons with tk.PhotoImage, which reads PNG but not SVG, and
 its two shipped builds run on CPython 3.15 and 3.7-x86 (Vista), for which a
 runtime SVG rasterizer has no reliable wheels - so the launcher loads only the
-PNGs emitted here. Its stem set is FEATURE_SPECS in launcher/supported_devices.py.
+PNGs emitted here. Its stem set is FEATURE_SPECS, built from bundled/db.json.
 The README and website reference the SVGs directly and need no target here.
 
 Renderer: resvg (resvg-py) - faithful SVG including filters/gradients, no system
@@ -167,7 +167,7 @@ def resolve_sources(names, src_dir):
 
 def launcher_stems():
     sys.path.insert(0, str(REPO / "launcher"))
-    from board_catalog_schema import FEATURE_SPECS
+    from board_database import FEATURE_SPECS
     return sorted({stem for _key, stem, _label in FEATURE_SPECS})
 
 

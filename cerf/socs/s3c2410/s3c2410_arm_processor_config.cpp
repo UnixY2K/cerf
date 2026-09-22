@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "s3c2410_id.h"
 #include "s3c2410_clocks.h"
 
 namespace {
@@ -12,7 +13,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::S3C2410;
+        return bd && bd->GetSocId() == SocId::S3c2410;
     }
 
     /* S3C2410A User Manual, ARM Instruction Set, Block Data Transfer

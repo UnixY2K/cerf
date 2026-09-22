@@ -1,6 +1,7 @@
 #include "iop13xx_atu_state.h"
 
 #include "../../boards/board_context.h"
+#include "iop13xx_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../state/state_stream.h"
 #include "../guest_cpu_reset.h"
@@ -9,7 +10,7 @@ REGISTER_SERVICE(Iop13xxAtuState);
 
 bool Iop13xxAtuState::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::IOP13xx;
+    return bd && bd->GetSocId() == SocId::Iop13xx;
 }
 
 void Iop13xxAtuState::OnReady() {

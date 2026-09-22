@@ -2,6 +2,7 @@
 #include "siemens_mp377_sm501_internal.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../core/log.h"
@@ -27,7 +28,7 @@ uint32_t AtomicUpdateByte(std::atomic<uint32_t>& target, uint32_t byte, uint8_t 
 
 bool SiemensMp377Sm501AudioMcu::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetBoard() == Board::SiemensMP377;
+    return board && board->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377Sm501AudioMcu::OnReady() {

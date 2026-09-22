@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../state/state_stream.h"
 #include <vector>
 
@@ -10,7 +11,7 @@ REGISTER_SERVICE(Imx51Gpu3dContext);
 
 bool Imx51Gpu3dContext::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetSoc() == SocFamily::iMX51;
+    return board && board->GetSocId() == SocId::Imx51;
 }
 
 /* NXP linux-imx a1638da9, gsl_drawctxt.c:74-107,1005-1076; gsl_ringbuffer.h:64. */

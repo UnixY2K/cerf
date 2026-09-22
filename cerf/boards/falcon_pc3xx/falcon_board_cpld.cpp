@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "falcon_4220_id.h"
 #include "../../jit/guest_engine.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../socs/pxa255/pxa255_gpio.h"
@@ -22,7 +23,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::FalconPC3xx;
+        return bd && bd->GetBoardId() == BoardId::Falcon4220;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

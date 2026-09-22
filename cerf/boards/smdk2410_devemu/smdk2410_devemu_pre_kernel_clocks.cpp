@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../board_context.h"
+#include "devemu_id.h"
 
 namespace {
 
@@ -16,7 +17,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::Smdk2410DevEmu;
+        return bd && bd->GetBoardId() == BoardId::Devemu;
     }
 
     uint32_t MpllCon() const override { return kMpllCon; }

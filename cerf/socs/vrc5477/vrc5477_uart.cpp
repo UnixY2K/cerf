@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "../../cpu/vr5500/vr5500_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../tracing/kernel_debug_sink.h"
 #include "../../state/state_stream.h"
@@ -43,7 +44,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::VR5500;
+        return bd && bd->GetSocId() == SocId::Vr5500;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

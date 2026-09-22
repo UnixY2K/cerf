@@ -3,6 +3,7 @@
 #include "mediaq_mq1188.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/falcon_pc3xx/falcon_4220_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../host/panel_frame_renderer.h"
 
@@ -21,7 +22,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::FalconPC3xx;
+        return bd && bd->GetBoardId() == BoardId::Falcon4220;
     }
 
     void PresentedSize(uint32_t& w, uint32_t& h) override {

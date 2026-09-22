@@ -3,6 +3,7 @@
 #include "imx31_audio_player.h"
 
 #include "../../boards/board_context.h"
+#include "imx31_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../cpu/emulated_memory.h"
@@ -30,7 +31,7 @@ constexpr uint32_t kBdWrap = 1u << 17;
 
 bool Imx31AudioPlayer::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::iMX31;
+    return bd && bd->GetSocId() == SocId::Imx31;
 }
 
 void Imx31AudioPlayer::OnReady() {

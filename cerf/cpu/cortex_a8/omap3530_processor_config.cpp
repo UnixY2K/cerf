@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "../../socs/omap3530/omap3530_id.h"
 
 namespace {
 
@@ -11,7 +12,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::OMAP3530;
+        return bd && bd->GetSocId() == SocId::Omap3530;
     }
 
     uint32_t Midr() const override { return 0x410fc080u; }

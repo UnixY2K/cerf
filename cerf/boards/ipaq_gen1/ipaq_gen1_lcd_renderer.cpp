@@ -3,6 +3,7 @@
 #include "../../socs/sa11xx/sa11xx_lcd.h"
 
 #include "../board_context.h"
+#include "ipaq_gen1_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../cpu/emulated_memory.h"
@@ -48,7 +49,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::IpaqGen1;
+        return bd && bd->GetBoardId() == BoardId::IpaqGen1;
     }
 
     void PresentedSize(uint32_t& w, uint32_t& h) override {

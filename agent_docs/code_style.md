@@ -82,9 +82,9 @@ bool FooService::DoThing(int arg) { /* ... */ }
     - **Shape P - private concrete, .cpp only, class inside `namespace { ... }`.** Used for every concrete that registers via `REGISTER_SERVICE_AS(Concrete, Base)` (consumers depend on `Base`, never on `Concrete`) AND for any concrete registered via `REGISTER_SERVICE` whose name is needed *only* by the registration macro itself. That is typical of peripherals that self-register with `PeripheralDispatcher` in `OnReady` and are then routed to by address, never resolved by class name. The class definition, all method bodies, and the `REGISTER_SERVICE[_AS]` line live in the same `.cpp`. The class sits inside `namespace { ... }` so no other TU can name it, and its enclosing `.cpp` has no companion header. This enforces the Dependency Inversion mechanically - there is no symbol available to import.
   A split of one service across two `.cpp` files is forbidden under either shape. If the file approaches the 500-line cap, the only sanctioned response is to split into multiple smaller services with distinct responsibilities (each its own `foo_*_service.{h,cpp}` or `foo_*.cpp`), never to spread one service across two `.cpp` files.
 - **Three orthogonal per-impl trees, picked by what the thing IS:**
-    - `cerf/socs/<chip>/` - on-die silicon for one SoC family. `*PageTableBuilder`, every chip-level peripheral (UART, INTC, GPIO, RTC, timer, watchdog, memctrl, LCD controller, NAND controller, …). Concretes' `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetSoc() == SocFamily::X`. Shape S allowed for cross-TU base concretes. Shape P more common for peripherals.
-    - `cerf/boards/<board>/` - one specific OEM board / BSP. The `BoardContext` impl (reports the board's `Board` / `SocFamily` / `CpuArch` / `RomPlacingMode`, and registers when the configured `board_id` names it), board-only virtual peripherals (host-emulator notification channels, virtual DMA transports), BSP-specific config writers (BSP_ARGS layout). Concretes' `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetBoard() == Board::X`.
-    - `cerf/peripherals/<vendor>_<part>/` - off-chip silicon any board can connect (for example `cirrus_pd6710/` PCMCIA controller, `amd_am29lv800bb/` NOR flash). Concretes' `ShouldRegister` evaluates a board-list - `auto b = emu_.Get<BoardContext>().GetBoard(); return b == X || b == Y;`. The list grows when a new board adopts the same part. The file is never duplicated. The `cerf/peripherals/` root also holds the abstract `Peripheral` base (`peripheral_base.{h,cpp}`) and the MMIO router (`peripheral_dispatcher.{h,cpp}`) - all peripheral-domain code, framework + concretes, lives in this one tree.
+    - `cerf/socs/<chip>/` - on-die silicon for one SoC family. `*PageTableBuilder`, every chip-level peripheral (UART, INTC, GPIO, RTC, timer, watchdog, memctrl, LCD controller, NAND controller, …). Concretes' `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetSocId() == SocId::X`. Shape S allowed for cross-TU base concretes. Shape P more common for peripherals.
+    - `cerf/boards/<board>/` - one specific OEM board / BSP. The `BoardContext` impl (returns the board's id, and registers when the configured `board_id` names it), board-only virtual peripherals (host-emulator notification channels, virtual DMA transports), BSP-specific config writers (BSP_ARGS layout). Concretes' `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetBoardId() == BoardId::X`.
+    - `cerf/peripherals/<vendor>_<part>/` - off-chip silicon any board can connect (for example `cirrus_pd6710/` PCMCIA controller, `amd_am29lv800bb/` NOR flash). Concretes' `ShouldRegister` evaluates a board-list - `auto b = emu_.Get<BoardContext>().GetBoardId(); return b == BoardId::X || b == BoardId::Y;`. The list grows when a new board adopts the same part. The file is never duplicated. The `cerf/peripherals/` root also holds the abstract `Peripheral` base (`peripheral_base.{h,cpp}`) and the MMIO router (`peripheral_dispatcher.{h,cpp}`) - all peripheral-domain code, framework + concretes, lives in this one tree.
   Abstract bases (`BoardContext`, `PageTableBuilder`, `Peripheral`) live next to their consumers (`cerf/boards/`, `cerf/core/`, `cerf/cpu/`, `cerf/peripherals/`), not under any per-impl tree. The addition or removal of a chip / board / vendor-part touches exactly one directory. A split of one impl's pieces across multiple trees (chip pieces in board dir, board pieces in chip dir) is the wrong axis.
 - **Before you write a new concrete, list that tree's root.** The base it implements is usually already there. A sibling concrete shows the idiom, but it does not name the seam.
 - **Find an existing impl by enumerating the trees, not by keyword search.** CERF names off-chip parts by vendor and part number, and SoC units by chip. A grep for what the part does ("flash", "nor", "timer") therefore finds nothing, and you write a duplicate. `ls` the directories and files under `cerf/peripherals/`, `cerf/socs/`, and sometimes `cerf/boards/`, and read the names. When `cerf/socs/` carries a per-chip directory for each family member next to a shared one, that split is itself the signal: `ls` inside each and see whether a shared `*_impl.h` base or a sibling concrete already covers your unit.
@@ -107,9 +107,9 @@ When a subsystem's behavior must differ between SoCs / boards / off-chip parts, 
 
 The query axis matches the per-impl tree (see `subsystems.md` § "Per-chip / per-board / per-part strategies"):
 
-- **SoC-family code** under `cerf/socs/<chip>/` - `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetSoc() == SocFamily::X`.
-- **Board-specific code** under `cerf/boards/<board>/` - `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetBoard() == Board::X`.
-- **Off-chip-part code** under `cerf/peripherals/<vendor>_<part>/` - `ShouldRegister` evaluates a board-list: `auto b = emu_.Get<BoardContext>().GetBoard(); return b == X || b == Y;`.
+- **SoC-family code** under `cerf/socs/<chip>/` - `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetSocId() == SocId::X`.
+- **Board-specific code** under `cerf/boards/<board>/` - `ShouldRegister` evaluates `emu_.Get<BoardContext>().GetBoardId() == BoardId::X`.
+- **Off-chip-part code** under `cerf/peripherals/<vendor>_<part>/` - `ShouldRegister` evaluates a board-list: `auto b = emu_.Get<BoardContext>().GetBoardId(); return b == BoardId::X || b == BoardId::Y;`.
 
 This takes two shapes, and the shape depends on whether the service has external callers:
 
@@ -124,7 +124,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::S3C2410;
+        return bd && bd->GetSocId() == SocId::S3c2410;
     }
 
     void OnReady() override {
@@ -134,7 +134,7 @@ public:
 REGISTER_SERVICE(S3C2410FooPeripheral);
 ```
 
-A sibling file `pxa27x_foo_peripheral.cpp` whose `ShouldRegister` evaluates `SocFamily::PXA27x` is the second variant, and so on. The addition of a third variant touches no existing files.
+A sibling file `pxa27x_foo_peripheral.cpp` whose `ShouldRegister` evaluates `SocId::Pxa270` is the second variant, and so on. The addition of a third variant touches no existing files.
 
 #### Shape B - external callers exist → base class + `REGISTER_SERVICE_AS`
 
@@ -159,7 +159,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::Smdk2410DevEmu;
+        return bd && bd->GetBoardId() == BoardId::Devemu;
     }
 
     uint32_t InitStackTopPa() const override { /* SMDK2410 DRAM top */ }
@@ -168,12 +168,12 @@ public:
 REGISTER_SERVICE_AS(Smdk2410DevEmuPageTableBuilder, PageTableBuilder);
 ```
 
-A sibling `jornada720_page_table_builder.cpp` registers itself for `Board::Jornada720` and so on. Consumers always write `emu.Get<PageTableBuilder>()` - they neither know nor care which concrete answered. (`PageTableBuilder` is the VA→PA map, a per-board choice, so its concretes select on `GetBoard()`. A SoC-family strategy like `ArmProcessorConfig` selects on `GetSoc()` instead.)
+A sibling `jornada720_page_table_builder.cpp` registers itself for `BoardId::Jornada720` and so on. Consumers always write `emu.Get<PageTableBuilder>()` - they neither know nor care which concrete answered. (`PageTableBuilder` is the VA→PA map, a per-board choice, so its concretes select on `GetBoardId()`. A SoC-family strategy like `ArmProcessorConfig` selects on `GetSocId()` instead.)
 
 #### Rules that apply to both shapes
 
-- **Exactly one impl wins for a required base.** Two `ShouldRegister` that return `true` for the same base is a bug. Two that return `false` for a required base is also a bug. `BoardContext` is the gate - the configured `board_id` (`cerf.json board.id` / `--board-id`) selects exactly one `BoardContext`, whose `GetBoard()` / `GetSoc()` then bucket every other strategy. Optional bases (a peripheral that not every board has) can have zero winners - consumers use `emu.TryGet<Base>()` and tolerate absence.
-- **`ShouldRegister` can resolve any service via `emu_.Get<>()`** - same lazy/recursive shape as `OnReady`. The framework defers slot resolution until first `Get<>` and walks each candidate's `ShouldRegister` on demand, so a strategy whose decision depends on another service (for example "register this MMU policy iff `Get<BoardContext>().GetSoc() == SocFamily::S3C2410`") composes cleanly. Cycles (`A.ShouldRegister` → `Get<B>` → `B.ShouldRegister` → `Get<A>`) halt loudly. NEVER reach into a specific concrete subclass by name (for example `Smdk2410DevEmuDetector::Fingerprint`) - that is a Dependency Inversion violation. Depend on the abstract `Base` only.
+- **Exactly one impl wins for a required base.** Two `ShouldRegister` that return `true` for the same base is a bug. Two that return `false` for a required base is also a bug. `BoardContext` is the gate - the configured `board_id` (`cerf.json board.id` / `--board-id`) selects exactly one `BoardContext`, whose `GetBoardId()` / `GetSocId()` then bucket every other strategy. Optional bases (a peripheral that not every board has) can have zero winners - consumers use `emu.TryGet<Base>()` and tolerate absence.
+- **`ShouldRegister` can resolve any service via `emu_.Get<>()`** - same lazy/recursive shape as `OnReady`. The framework defers slot resolution until first `Get<>` and walks each candidate's `ShouldRegister` on demand, so a strategy whose decision depends on another service (for example "register this MMU policy iff `Get<BoardContext>().GetSocId() == SocId::S3c2410`") composes cleanly. Cycles (`A.ShouldRegister` → `Get<B>` → `B.ShouldRegister` → `Get<A>`) halt loudly. NEVER reach into a specific concrete subclass by name (for example `Smdk2410DevEmuDetector::Fingerprint`) - that is a Dependency Inversion violation. Depend on the abstract `Base` only.
 - **Never put `if (board == X)` or `if (soc == X)` inside the impl body.** The impl already represents one specific board / SoC. That branch belongs in `ShouldRegister` and nowhere else. If two boards share most of an impl and diverge in one method, the divergence goes into a separate Service that the shared impl resolves via `emu_.Get<>()` - not an inline branch.
 - **A shared-capable ISA capability goes in the shared path behind a `ProcessorConfig::HasX()` flag, never localized in one SoC's strategy.** When an instruction-set capability (VFP, NEON, DSP, …) currently appears on only one implemented SoC, its decode/dispatch still belongs in the shared decoder / emit path, gated by the engine's processor-config capability flag (`ArmProcessorConfig` / `MipsProcessorConfig` `HasX()`). It must never be hardcoded into that SoC's coprocessor emitter (`CoprocEmitter` / `MipsCp0Emitter`) or strategy. "Only one current SoC has it" is an artifact of the implemented-SoC set, not a property of the capability, and a localization of it forces an expensive later re-extraction into the shared path.
 - **One concrete per file, filename matches the class name exactly.** `S3C2410FooPeripheral` → `s3c2410_foo_peripheral.{h,cpp}`, `PXA27xFooPeripheral` → `pxa27x_foo_peripheral.{h,cpp}`. Never gang two concretes into one file. Same strict naming rule as § Writing a service: snake_case of the full class name, no abbreviation, no rename, no dropped suffix. The 500-line cap and the "split into multiple services" rule apply identically here - if a concrete impl outgrows its file, split it into smaller services, not into sidecar `.cpp` files.

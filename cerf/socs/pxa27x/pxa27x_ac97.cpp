@@ -1,6 +1,7 @@
 #include "pxa27x_ac97.h"
 
 #include "../../boards/board_context.h"
+#include "pxa270_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../host/audio_activity_widget.h"
 #include "../../peripherals/ac97_codec.h"
@@ -47,7 +48,7 @@ constexpr uint32_t kGsrAcoffd = 1u << 3, kGsrMoint = 1u << 2, kGsrMiint = 1u << 
 
 bool Pxa27xAc97::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::PXA27x;
+    return bd && bd->GetSocId() == SocId::Pxa270;
 }
 
 void Pxa27xAc97::OnReady() {

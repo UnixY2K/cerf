@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "../../boards/simpad_sl4/simpad_sl4_id.h"
 #include "../../state/state_stream.h"
 #include "../peripheral_dispatcher.h"
 
@@ -20,7 +21,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::SimpadSl4;
+        return bd && bd->GetBoardId() == BoardId::SimpadSl4;
     }
 
     void OnReady() override {

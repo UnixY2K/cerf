@@ -1,6 +1,7 @@
 #include "msm8255_adm_command_list.h"
 
 #include "../../boards/board_context.h"
+#include "msm8255_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../cpu/physical_bus.h"
@@ -38,7 +39,7 @@ REGISTER_SERVICE(Msm8255AdmCommandList);
 
 bool Msm8255AdmCommandList::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::MSM8255;
+    return bd && bd->GetSocId() == SocId::Msm8255;
 }
 
 void Msm8255AdmCommandList::RequireModeledCmdPtr(uint32_t value) {

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, Optional
 
+from board_info import board_panel_size
 from cerf_user_json import read_persist_fields, write_persist_overrides
 from launch_options_presets import (DEFAULT_SCREEN_WIDTH,
                                     DEFAULT_SCREEN_HEIGHT)
@@ -14,7 +15,12 @@ PERSIST_KEYS = ("network_enabled", "guest_additions", "color_scheme",
 
 
 def resolve_baseline(base: dict, default_width: Optional[int],
-                     default_height: Optional[int]) -> dict:
+                     default_height: Optional[int],
+                     board_id: object = None) -> dict:
+    panel = board_panel_size(board_id)
+    if panel is not None:
+        default_width = default_width or panel[0]
+        default_height = default_height or panel[1]
     b = {}
     b["network_enabled"] = base.get("network_enabled", True)
     b["guest_additions"] = base.get("guest_additions", False)
@@ -45,12 +51,13 @@ def resolve_baseline(base: dict, default_width: Optional[int],
 
 def effective_values(device_dir: Optional[Path],
                      default_width: Optional[int],
-                     default_height: Optional[int]) -> tuple:
+                     default_height: Optional[int],
+                     board_id: object = None) -> tuple:
     base = {}
     override = {}
     if device_dir is not None:
         base, override = read_persist_fields(device_dir)
-    baseline = resolve_baseline(base, default_width, default_height)
+    baseline = resolve_baseline(base, default_width, default_height, board_id)
     eff = dict(baseline)
     eff.update(override)
     return baseline, eff

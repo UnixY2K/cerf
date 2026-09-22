@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 #include "../irq_controller.h"
@@ -46,7 +47,7 @@ constexpr std::size_t kFifoDepth = 64;  /* MCIMX51RM §26.1: 64x32 TX/RX FIFO */
 
 bool Imx51Ecspi1::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::iMX51;
+    return bd && bd->GetSocId() == SocId::Imx51;
 }
 
 void Imx51Ecspi1::OnReady() { emu_.Get<PeripheralDispatcher>().Register(this); }

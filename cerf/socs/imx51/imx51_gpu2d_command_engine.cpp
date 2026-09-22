@@ -4,6 +4,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../cpu/emulated_memory.h"
 #include "../../state/state_stream.h"
 #include "imx51_gpu2d_rasterizer.h"
@@ -71,7 +72,7 @@ REGISTER_SERVICE(Imx51Gpu2dCommandEngine);
 
 bool Imx51Gpu2dCommandEngine::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::iMX51;
+    return bd && bd->GetSocId() == SocId::Imx51;
 }
 
 void Imx51Gpu2dCommandEngine::Halt(const char* why, uint32_t addr, uint32_t data) const {

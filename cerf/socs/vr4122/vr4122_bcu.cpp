@@ -1,6 +1,7 @@
 #include "../../peripherals/peripheral_base.h"
 
 #include "../../boards/board_context.h"
+#include "vr4122_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
@@ -45,7 +46,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::VR4122;
+        return bd && bd->GetSocId() == SocId::Vr4122;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

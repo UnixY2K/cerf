@@ -8,6 +8,7 @@
 #include "../../socs/vr41xx/vr41xx_giu.h"
 #include "../../state/state_stream.h"
 #include "../board_context.h"
+#include "casio_cassiopeia_e55_id.h"
 
 namespace {
 
@@ -36,7 +37,7 @@ CasioCassiopeiaE55PcCard::CasioCassiopeiaE55PcCard(CerfEmulator& emu)
 
 bool CasioCassiopeiaE55PcCard::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::CasioCassiopeiaE55;
+    return bd && bd->GetBoardId() == BoardId::CasioCassiopeiaE55;
 }
 
 void CasioCassiopeiaE55PcCard::OnReady() {

@@ -9,6 +9,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "odo_id.h"
 #include "../../cpu/emulated_memory.h"
 #include "../../host/audio_activity_widget.h"
 #include "../../peripherals/peripheral_dispatcher.h"
@@ -42,7 +43,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::OdoArm720;
+        return bd && bd->GetBoardId() == BoardId::Odo;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);
@@ -127,7 +128,7 @@ REGISTER_SERVICE(OdoArm720AudioPlayer);
 
 bool OdoArm720AudioPlayer::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::OdoArm720;
+    return bd && bd->GetBoardId() == BoardId::Odo;
 }
 
 void OdoArm720AudioPlayer::OnShutdown() { sink_.Stop(); }

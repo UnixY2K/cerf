@@ -1,6 +1,7 @@
 #include "iop13xx_gpio_input.h"
 
 #include "../../boards/board_context.h"
+#include "iop13xx_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/peripheral_base.h"
 #include "../../peripherals/peripheral_dispatcher.h"
@@ -20,7 +21,7 @@ public:
 
     bool ShouldRegister() override {
         auto* board = emu_.TryGet<BoardContext>();
-        return board && board->GetSoc() == SocFamily::IOP13xx;
+        return board && board->GetSocId() == SocId::Iop13xx;
     }
 
     void OnReady() override {

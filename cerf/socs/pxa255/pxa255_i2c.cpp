@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "pxa255_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 #include "../irq_controller.h"
@@ -16,7 +17,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::PXA25x;
+        return bd && bd->GetSocId() == SocId::Pxa255;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

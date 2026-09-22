@@ -5,6 +5,7 @@
 #include "../core/cerf_emulator.h"
 #include "../core/log.h"
 #include "../boards/board_context.h"
+#include "imx51/imx51_id.h"
 #include "../tracing/kernel_debug_sink.h"
 #include "../peripherals/peripheral_dispatcher.h"
 #include "../state/state_stream.h"
@@ -23,14 +24,14 @@ namespace cerf_freescale_uart_detail {
    (MCIMX51RM Ch 59) - same map + reset values - so the model is shared, gated per
    concrete by kSoc. Status regs MUST read fixed idle: if UTS.TXFULL ever reads set
    or USR1.TRDY clear, the guest TX spin never exits. */
-template <uint32_t kBase, int kUartNum, SocFamily kSoc>
+template <uint32_t kBase, int kUartNum, const std::string_view& kSoc>
 class FreescaleUartBase : public Peripheral, public FreescaleSdmaPeripheral {
 public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == kSoc;
+        return bd && bd->GetSocId() == kSoc;
     }
     void OnReady() override { emu_.Get<PeripheralDispatcher>().Register(this); }
 
@@ -126,7 +127,7 @@ private:
     /* ONEMS (0xB0) is 24-bit only on i.MX51 (MCIMX51RM §59.3.1); on i.MX31 every
        UART register including ONEMS is 16 LSB (MCIMX31RM §31.3.2). */
     static constexpr uint32_t kOnemsMask =
-        (kSoc == SocFamily::iMX51) ? 0xFFFFFFu : 0xFFFFu;
+        (kSoc == SocId::Imx51) ? 0xFFFFFFu : 0xFFFFu;
 
     /* §59.3.3 reset values that ARE the idle TX-ready/RX-empty status: USR1.TRDY
        (0x2040), USR2.TXDC+TXFE (0x4028), UTS.TXEMPTY (0x60, TXFULL clear). */

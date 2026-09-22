@@ -1,6 +1,7 @@
 #include "vr4122_clock_state.h"
 
 #include "../../boards/board_context.h"
+#include "vr4122_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../state/state_stream.h"
 #include "../guest_cpu_reset.h"
@@ -9,7 +10,7 @@ REGISTER_SERVICE(Vr4122ClockState);
 
 bool Vr4122ClockState::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::VR4122;
+    return bd && bd->GetSocId() == SocId::Vr4122;
 }
 
 void Vr4122ClockState::OnReady() {

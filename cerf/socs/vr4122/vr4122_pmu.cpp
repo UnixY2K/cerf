@@ -5,6 +5,7 @@
 #include "vr4122_clock_state.h"
 
 #include <cstdint>
+#include "vr4122_id.h"
 
 namespace {
 
@@ -58,7 +59,7 @@ constexpr uint16_t kCnt2SoftRst  = 0x0010u;
 constexpr uint32_t kOffTclkDivReg   = 0x0Cu;
 constexpr uint16_t kTclkDivWritable = 0x0107u;
 
-class Vr4122Pmu : public Vr41xxPmuBase<SocFamily::VR4122, kModel> {
+class Vr4122Pmu : public Vr41xxPmuBase<SocId::Vr4122, kModel> {
 public:
     using Vr41xxPmuBase::Vr41xxPmuBase;
 

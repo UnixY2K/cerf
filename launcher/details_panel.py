@@ -14,12 +14,8 @@ from device_state import (
     PackageStatus,
     format_size,
 )
-from board_catalog_schema import FEATURE_SPECS
-from board_info import (
-    board_extra_notes,
-    board_features,
-    dynamic_extra_notes,
-)
+from board_database import FEATURE_SPECS
+from board_info import board_extra_notes, board_features
 from ui_dialogs import bind_tooltip
 import ui_theme as theme
 
@@ -216,14 +212,8 @@ class DetailsPanel:
             self.desc_label.grid_remove()
 
     def _update_notes(self, device: DeviceBundle) -> None:
-        # ROM-specific notes first, then board-wide quirks, then
-        # predicate-gated dynamic notes - both from supported_devices.py.
         notes: List[str] = list(device.meta.notes)
         notes += board_extra_notes(device.meta.board_id)
-        notes += dynamic_extra_notes(device.meta.os_name,
-                                     device.meta.os_ver_major,
-                                     device.meta.os_ver_minor,
-                                     device.meta.board_id)
         if notes:
             self.notes_label.config(text="\n".join(f"• {n}" for n in notes))
             self.notes_frame.grid()

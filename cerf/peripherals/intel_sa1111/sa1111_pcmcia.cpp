@@ -6,6 +6,7 @@
 #include "../pcmcia/pcmcia_space_router.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/jornada720/jornada_720_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../host/host_widget_registry.h"
 #include "../../state/state_stream.h"
@@ -56,7 +57,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::Jornada720;
+        return bd && bd->GetBoardId() == BoardId::Jornada720;
     }
 
     void OnReady() override {

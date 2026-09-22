@@ -4,6 +4,7 @@
 #include "../../core/device_config.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "odo_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/emulation_freeze.h"
 #include "../../state/state_stream.h"
@@ -73,7 +74,7 @@ OdoArm720TouchSound::~OdoArm720TouchSound() { StopPenTimerThread(); }
 
 bool OdoArm720TouchSound::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::OdoArm720;
+    return bd && bd->GetBoardId() == BoardId::Odo;
 }
 
 void OdoArm720TouchSound::OnReady() {

@@ -3,6 +3,7 @@
 #include "vr4111_bus_error.h"
 
 #include <cstdint>
+#include "vr4111_id.h"
 
 namespace {
 
@@ -54,7 +55,7 @@ static_assert((0x3FFFu & 0xC000u) == 0u && (0x3FFFu | 0xC000u) == 0xFFFFu,
 constexpr uint32_t kErrStAddr     = 0x0B00000Cu;
 constexpr uint16_t kErrStReserved = 0xFFFEu;
 
-class Vr4111Bcu : public Vr41xxRegWindowBase<SocFamily::VR4111, kModel> {
+class Vr4111Bcu : public Vr41xxRegWindowBase<SocId::Vr4111, kModel> {
 public:
     using Vr41xxRegWindowBase::Vr41xxRegWindowBase;
 

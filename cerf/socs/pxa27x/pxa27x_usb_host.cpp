@@ -1,6 +1,7 @@
 #include "../../peripherals/peripheral_base.h"
 
 #include "../../boards/board_context.h"
+#include "pxa270_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../peripherals/peripheral_dispatcher.h"
@@ -108,7 +109,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::PXA27x;
+        return bd && bd->GetSocId() == SocId::Pxa270;
     }
 
     void OnReady() override {

@@ -25,14 +25,14 @@
    registers (ReadExtra/WriteExtra) and INTC line (AssertIrqLine). */
 namespace cerf_freescale_sdma_detail {
 
-template <uint32_t kBase, SocFamily kSoc>
+template <uint32_t kBase, const std::string_view& kSoc>
 class FreescaleSdmaBase : public Peripheral, public FreescaleSdmaBus {
 public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == kSoc;
+        return bd && bd->GetSocId() == kSoc;
     }
     void OnReady() override {
         ResetCore();

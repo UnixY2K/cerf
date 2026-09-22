@@ -1,6 +1,8 @@
 #include "pr31x00_card_space.h"
 
 #include "../../boards/board_context.h"
+#include "pr31500_id.h"
+#include "pr31700_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/pcmcia/pcmcia_slot.h"
 #include "../../state/state_stream.h"
@@ -27,8 +29,8 @@ constexpr uint32_t kMemOffMask = 0x03FFFFFFu;
 bool Pr31x00CardSpace::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
     if (!bd) return false;
-    const SocFamily soc = bd->GetSoc();
-    return soc == SocFamily::PR31500 || soc == SocFamily::PR31700;
+    const std::string_view soc = bd->GetSocId();
+    return soc == SocId::Pr31500 || soc == SocId::Pr31700;
 }
 
 void Pr31x00CardSpace::ProvideSockets(PcmciaSlot* socket0, PcmciaSlot* socket1) {

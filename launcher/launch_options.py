@@ -112,7 +112,8 @@ class LaunchOptionsPanel:
         self._baseline, eff = effective_values(
             self._device_dir,
             device.default_screen_width if device is not None else None,
-            device.default_screen_height if device is not None else None)
+            device.default_screen_height if device is not None else None,
+            device.meta.board_id if device is not None else None)
         self._guest_additions_available = self._resolve_guest_additions_available(device)
         self._guest_additions_locked = bool(device is not None
                                             and device.meta.forbid_guest_additions)

@@ -24,14 +24,14 @@
    i.MX51; the IRQ line is per-concrete via Assert/DeassertIrqLine. */
 namespace cerf_freescale_gpt_detail {
 
-template <uint32_t kBase, SocFamily kSoc>
+template <uint32_t kBase, const std::string_view& kSoc>
 class FreescaleGptBase : public Peripheral {
 public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == kSoc;
+        return bd && bd->GetSocId() == kSoc;
     }
 
     void OnReady() override {

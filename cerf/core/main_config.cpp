@@ -1,6 +1,5 @@
 #include "main_config.h"
 #include "log.h"
-#include "cli_usage.h"
 #include "crash_report.h"
 #include "run_timeout.h"
 #include <cstdlib>
@@ -53,7 +52,6 @@ ArgParseResult ParseCerfArgs(int argc, char* argv[], CerfConfig& cfg) {
         } else if (strcmp(argv[i], "--quiet") == 0) {
             Log::SetEnabled(Log::MASK_NONE);
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            PrintUsage(argv[0]);
             return ArgParseResult::HelpShown;
         } else {
             LOG(Caution, "Unknown argument: %s (use --help)\n", argv[i]);

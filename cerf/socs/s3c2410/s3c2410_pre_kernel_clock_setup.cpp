@@ -1,6 +1,7 @@
 #include "s3c2410_pre_kernel_clocks.h"
 
 #include "../../boards/board_context.h"
+#include "s3c2410_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../guest_cpu_reset.h"
@@ -19,7 +20,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        if (bd == nullptr || bd->GetSoc() != SocFamily::S3C2410) return false;
+        if (bd == nullptr || bd->GetSocId() != SocId::S3c2410) return false;
         return emu_.TryGet<S3C2410PreKernelClocks>() != nullptr;
     }
 

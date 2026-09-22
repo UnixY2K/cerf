@@ -4,6 +4,7 @@
 #include "ford_sync2_ilp_signals.h"
 
 #include "../board_context.h"
+#include "ford_sync_2_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../state/state_stream.h"
@@ -38,7 +39,7 @@ constexpr std::size_t kMaxReplyPayload = 0x40u;
 
 bool FordSync2IlpSignals::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::FordSyncGen2;
+    return bd && bd->GetBoardId() == BoardId::FordSync2;
 }
 
 std::size_t FordSync2IlpSignals::IndexOf(uint32_t sigid) const {

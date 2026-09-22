@@ -250,8 +250,8 @@ path, is unaccelerated work, not a finished feature.
 **Display color model.** Direct-color on CE3+/CE2.11 (≥16bpp). But **CE2.0
 must be 8bpp-indexed**: its gwes creates only `PAL_INDEXED`. A ≥16bpp
 framebuffer therefore leaves `hpalDefault` = 0 and faults gwes (Exception 002)
-in display init. A CE2.0 board forces 8bpp with
-`BoardContext::GetGuestAdditionsColorDepth()` = 8. The indexed path publishes
+in display init. A CE2.0 board forces 8bpp through its `ga_color_depth`
+board-database field. The indexed path publishes
 the palette over the `cerf_virt` palette channel, and the host expands
 index→RGB on scanout. The framebuffer bpp selects the path, never the OS
 version (CE2.11 is already ≥16bpp).

@@ -1,6 +1,7 @@
 #include "casio_toricomail_asic.h"
 
 #include "../../boards/board_context.h"
+#include "casio_toricomail_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../core/log.h"
@@ -16,7 +17,7 @@
 
 bool CasioToricomailAsic::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::CasioToricomail;
+    return bd && bd->GetBoardId() == BoardId::CasioToricomail;
 }
 
 void CasioToricomailAsic::OnReady() {

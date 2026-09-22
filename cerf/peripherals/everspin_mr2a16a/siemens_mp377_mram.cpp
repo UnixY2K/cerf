@@ -4,12 +4,13 @@
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 
 namespace siemens_mp377 {
 
 bool SiemensMp377Mram::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::SiemensMP377;
+    return bd && bd->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377Mram::OnReady() {

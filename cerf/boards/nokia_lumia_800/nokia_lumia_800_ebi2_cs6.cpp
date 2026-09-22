@@ -5,6 +5,7 @@
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 #include "../board_context.h"
+#include "nokia_lumia_800_id.h"
 
 #include <atomic>
 #include <cstdint>
@@ -26,7 +27,7 @@ public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
-        return emu_.Get<BoardContext>().GetBoard() == Board::NokiaLumia800;
+        return emu_.Get<BoardContext>().GetBoardId() == BoardId::NokiaLumia800;
     }
 
     void OnReady() override {

@@ -139,10 +139,9 @@ void AboutDialog::BuildControls(HWND hwnd, bool with_device) {
 
     if (with_device) {
         auto& bd = emu_.Get<BoardContext>();
-        std::wstring dev = L"Emulating:  " + Utf8ToWide(BoardContext::BoardName(bd.GetBoard()));
-        const char* soc = BoardContext::SocFamilyName(bd.GetSoc());
-        if (soc && *soc && bd.GetSoc() != SocFamily::Unknown)
-            dev += L"  ·  " + Utf8ToWide(soc);
+        std::wstring dev = L"Emulating:  " + Utf8ToWide(bd.BoardName());
+        if (!bd.GetSocId().empty())
+            dev += L"  ·  " + Utf8ToWide(bd.SocName());
         mk(L"STATIC", dev.c_str(), SS_LEFT, tx, cb + S(kDevDy), tw, S(18),
            IDC_DEVICE);
     }
@@ -213,7 +212,7 @@ void AboutDialog::Run(HWND owner, bool with_device) {
     dpi_  = emu_.Get<HostDpi>().ForWindow(owner);
 
     const bool show_device =
-        with_device && emu_.Get<BoardContext>().GetBoard() != Board::Unknown;
+        with_device && !emu_.Get<BoardContext>().GetBoardId().empty();
     layout_drop_ = show_device ? 0 : kNoDeviceDrop;
 
     auto& band = emu_.Get<DialogBand>();

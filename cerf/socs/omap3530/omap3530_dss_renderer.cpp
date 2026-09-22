@@ -3,6 +3,7 @@
 #include "omap3530_dss.h"
 
 #include "../../boards/board_context.h"
+#include "omap3530_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../cpu/emulated_memory.h"
@@ -23,7 +24,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::OMAP3530;
+        return bd && bd->GetSocId() == SocId::Omap3530;
     }
 
     void PresentedSize(uint32_t& w, uint32_t& h) override {

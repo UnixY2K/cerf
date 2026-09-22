@@ -6,6 +6,7 @@
 #include "../../socs/pr31x00/pr31x00_card_space.h"
 #include "../../socs/pr31x00/pr31x00_io.h"
 #include "../board_context.h"
+#include "philips_nino_300_id.h"
 
 namespace {
 
@@ -24,7 +25,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::PhilipsNino300;
+        return bd && bd->GetBoardId() == BoardId::PhilipsNino300;
     }
 
     void OnReady() override {

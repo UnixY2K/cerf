@@ -26,7 +26,7 @@
 namespace cerf_vr41xx_piu_detail {
 
 
-template <SocFamily Soc, Vr41xxPiuModel M>
+template <const std::string_view& Soc, Vr41xxPiuModel M>
 class Vr41xxPiuBase : public Vr41xxPiu {
 public:
     using Vr41xxPiu::Vr41xxPiu;
@@ -36,7 +36,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == Soc;
+        return bd && bd->GetSocId() == Soc;
     }
 
     /* Every PIU register's RTCRST column equals its other-resets column (VR4121 UM

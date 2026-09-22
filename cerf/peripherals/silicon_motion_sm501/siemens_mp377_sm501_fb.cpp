@@ -4,6 +4,7 @@
 #include "siemens_mp377_sm501_internal.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
@@ -14,7 +15,7 @@ namespace siemens_mp377 {
 
 bool SiemensMp377Sm501Fb::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::SiemensMP377;
+    return bd && bd->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377Sm501Fb::OnReady() {

@@ -13,6 +13,8 @@
 #include "../../jit/arm/place_fns.h"
 #include "../../jit/x86_emit.h"
 #include "../../boards/board_context.h"
+#include "../../socs/sa11xx/sa1110_id.h"
+#include "../../socs/sa11xx/sa1100_id.h"
 
 namespace {
 
@@ -22,7 +24,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && (bd->GetSoc() == SocFamily::SA1110 || bd->GetSoc() == SocFamily::SA1100);
+        return bd && (bd->GetSocId() == SocId::Sa1110 || bd->GetSocId() == SocId::Sa1100);
     }
 
     /* SA-110 Data Sheet §3.3: cp15 is the only coprocessor on

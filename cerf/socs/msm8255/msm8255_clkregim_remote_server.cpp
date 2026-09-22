@@ -7,6 +7,7 @@
 #include "msm8255_value_set.h"
 
 #include "../../boards/board_context.h"
+#include "msm8255_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../cpu/emulated_memory.h"
@@ -73,7 +74,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == SocFamily::MSM8255;
+        return bd && bd->GetSocId() == SocId::Msm8255;
     }
 
     void OnReady() override {

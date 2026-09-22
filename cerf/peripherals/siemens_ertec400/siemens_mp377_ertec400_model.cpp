@@ -5,6 +5,7 @@
 #include "siemens_mp377_ertec400_write_only_map.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../state/state_stream.h"
@@ -21,7 +22,7 @@ REGISTER_SERVICE(SiemensMp377Ertec400Model);
 
 bool SiemensMp377Ertec400Model::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetBoard() == Board::SiemensMP377;
+    return board && board->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377Ertec400Model::OnReady() {

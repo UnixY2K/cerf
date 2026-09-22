@@ -1,6 +1,7 @@
 #include "devemu_keyboard_controller.h"
 
 #include "../../boards/board_context.h"
+#include "devemu_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../jit/arm/arm_jit.h"
@@ -45,7 +46,7 @@ constexpr auto kDeadlinePollInterval = std::chrono::microseconds(50);
 
 bool DevEmuKeyboardController::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::Smdk2410DevEmu;
+    return bd && bd->GetBoardId() == BoardId::Devemu;
 }
 
 void DevEmuKeyboardController::OnReady() {

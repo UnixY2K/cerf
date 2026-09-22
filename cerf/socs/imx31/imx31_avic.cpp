@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "imx31_id.h"
 #include "../../jit/arm/arm_jit.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 
@@ -25,7 +26,7 @@ int32_t Nimask5ToSigned(uint32_t v) {
 
 bool Imx31Avic::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::iMX31;
+    return bd && bd->GetSocId() == SocId::Imx31;
 }
 
 void Imx31Avic::OnReady() {

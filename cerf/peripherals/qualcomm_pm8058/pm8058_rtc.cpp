@@ -1,6 +1,7 @@
 #include "pm8058_rtc.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/nokia_lumia_800/nokia_lumia_800_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../core/steady_time.h"
@@ -20,7 +21,7 @@ constexpr uint64_t kMicrosPerSecond = 1000000u;
 
 bool Pm8058Rtc::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::NokiaLumia800;
+    return bd && bd->GetBoardId() == BoardId::NokiaLumia800;
 }
 
 uint32_t Pm8058Rtc::CounterLocked() const {

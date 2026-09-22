@@ -1,6 +1,9 @@
 #include "ite_it8368.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/philips_nino_300/philips_nino_300_id.h"
+#include "../../boards/philips_velo_1/philips_velo_1_id.h"
+#include "../../boards/sharp_mobilon_hc4100/sharp_mobilon_hc4100_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../state/state_stream.h"
@@ -87,9 +90,9 @@ constexpr uint16_t kCtrlKnown = kCtrlFixAttrIo | kCtrlAddrSel | kCtrlByteSwap |
 bool IteIt8368::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
     if (!bd) return false;
-    const Board board = bd->GetBoard();
-    return board == Board::PhilipsNino300 || board == Board::PhilipsVelo1 ||
-           board == Board::SharpMobilonHc4100;
+    const std::string_view board = bd->GetBoardId();
+    return board == BoardId::PhilipsNino300 || board == BoardId::PhilipsVelo1 ||
+           board == BoardId::SharpMobilonHc4100;
 }
 
 void IteIt8368::OnReady() {

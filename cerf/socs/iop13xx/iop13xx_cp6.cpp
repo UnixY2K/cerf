@@ -2,6 +2,7 @@
 #include "iop13xx_cp6_registers.h"
 
 #include "../../boards/board_context.h"
+#include "iop13xx_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../core/log.h"
@@ -27,7 +28,7 @@ Iop13xxCp6::~Iop13xxCp6() {
 }
 bool Iop13xxCp6::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::IOP13xx;
+    return bd && bd->GetSocId() == SocId::Iop13xx;
 }
 
 void Iop13xxCp6::OnReady() {

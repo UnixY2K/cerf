@@ -78,7 +78,7 @@ def main():
                '--livereload',
                '-f', config,
                '-w', SITE,
-               '-w', os.path.join(ROOT, 'launcher', 'supported_devices.py'),
+               '-w', os.path.join(ROOT, 'bundled', 'db.json'),
                '-w', os.path.join(ROOT, 'docs', 'changelog.yml')]
         if args.port is not None:
             cmd += ['-a', f'127.0.0.1:{args.port}']

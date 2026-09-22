@@ -9,7 +9,7 @@ from tkinter import filedialog, ttk
 from typing import Callable, List, Optional
 
 from screen_geometry import fit_geometry
-from board_catalog_schema import STORAGE_SEC_CONTAINER
+from board_database import ROM_PLACING_IMX51_NAND
 from board_info import board_storage_type, supported_boards
 from ui_dialogs import show_error
 from user_device_create import UserDeviceSpec, validate_device_name
@@ -190,7 +190,7 @@ class NewDeviceWizard:
         if not self.var_name.get().strip() or self.var_name.get() == prev:
             self.var_name.set(board["name"])
         self._prefilled_name = board["name"]
-        sec = board_storage_type(board["board_id"]) == STORAGE_SEC_CONTAINER
+        sec = board_storage_type(board["id"]) == ROM_PLACING_IMX51_NAND
         self.rom_label.config(text="Factory recovery image (.sec file):"
                               if sec else "NK/XIP/NB0/etc:")
         if sec:
@@ -202,7 +202,7 @@ class NewDeviceWizard:
     def _browse(self) -> None:
         board = self._selected_board()
         sec = (board is not None and
-               board_storage_type(board["board_id"]) == STORAGE_SEC_CONTAINER)
+               board_storage_type(board["id"]) == ROM_PLACING_IMX51_NAND)
         types = ([("Factory recovery image", "*.sec")] if sec else
                  [("ROM images", "*.nb0 *.bin *.nb *.img *.rom *.raw"),
                   ("All files", "*.*")])
@@ -244,7 +244,7 @@ class NewDeviceWizard:
             show_error(self._dlg, "Cannot create device",
                        f"ROM file not found:\n{rom}")
             return
-        spec = UserDeviceSpec(name=name, board_id=board["board_id"],
+        spec = UserDeviceSpec(name=name, board_id=board["id"],
                               rom_path=rom, copy_rom=self.var_copy.get())
         self._dlg.destroy()
         self._on_create(spec)

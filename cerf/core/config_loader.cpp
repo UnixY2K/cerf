@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "config_loader.h"
+#include "board_database.h"
 #include "cerf_emulator.h"
 #include "config_json.h"
 #include "config_mutable_fields.h"
@@ -448,6 +449,16 @@ void ConfigLoader::LoadInto(DeviceConfig& config) {
             else CfgFatal("(command line)", "--tab must be boot, hw, or fb");
         }
     }
+
+    ApplyBoardPanelDefault(config);
+}
+
+void ConfigLoader::ApplyBoardPanelDefault(DeviceConfig& config) {
+    if (config.board_configurable_screen_explicit) return;
+    const DbDevice* dev = emu_.Get<BoardDatabase>().FindDevice(config.board_id);
+    if (!dev || !dev->lcd_panel_size) return;
+    config.board_configurable_screen_width  = dev->lcd_panel_size->width;
+    config.board_configurable_screen_height = dev->lcd_panel_size->height;
 }
 
 void ConfigLoader::SaveLastSaveStateMode(bool save_state) {

@@ -2,6 +2,8 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../../boards/board_context.h"
+#include "sa1110_id.h"
+#include "sa1100_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 #include "sa11xx_mcp_codec.h"
@@ -13,7 +15,7 @@
 
 bool Sa11xxMcp::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && (bd->GetSoc() == SocFamily::SA1110 || bd->GetSoc() == SocFamily::SA1100);
+    return bd && (bd->GetSocId() == SocId::Sa1110 || bd->GetSocId() == SocId::Sa1100);
 }
 
 void Sa11xxMcp::OnReady() {

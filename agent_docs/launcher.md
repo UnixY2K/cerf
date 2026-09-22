@@ -182,10 +182,9 @@ A running device locks its launch options in the side panel.
 
 ## Board data
 
-`supported_devices.py` is a hand-edited table, keyed by `board_id`. It holds the
-supported flag, the SoC, the feature map and the per-board notes. `board_info.py`
-reads it, the side panel shows it, and `compile_readme.py` builds the README
-board table from it.
+The launcher reads its board knowledge from `bundled/db.json`, which
+`cerf.exe` reads too. Neither program keeps a second copy, so a board the
+launcher lists and a board CERF boots can never disagree.
 
 ## Self-update
 

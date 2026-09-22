@@ -94,14 +94,14 @@ struct Vr41xxIcuModel {
     uint16_t mfir_writable;
 };
 
-template <SocFamily Soc, Vr41xxIcuModel M>
+template <const std::string_view& Soc, Vr41xxIcuModel M>
 class Vr41xxIcuBase : public Vr41xxIcu {
 public:
     using Vr41xxIcu::Vr41xxIcu;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == Soc;
+        return bd && bd->GetSocId() == Soc;
     }
 
     void OnReady() override {

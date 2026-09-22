@@ -1,9 +1,14 @@
 #include "cli_usage.h"
+
+#include "board_database.h"
+#include "cerf_emulator.h"
 #include "log.h"
-#include "../boards/board_context.h"
+
 #include <cstdio>
 
-void PrintUsage(const char* prog) {
+REGISTER_SERVICE(CliUsage);
+
+void CliUsage::Print(const char* prog) {
     printf("CE Runtime Foundation (CERF) - Universal Windows CE Emulator\n\n");
     printf("Usage: %s [options]\n\n", prog);
     printf("Options:\n");
@@ -45,8 +50,8 @@ void PrintUsage(const char* prog) {
     printf("\n");
     printf("Board ids (cerf.json board.id / --board-id):\n  ");
     bool first = true;
-    for (const auto& e : BoardContext::BoardIds()) {
-        printf("%s%s", first ? "" : ", ", e.id);
+    for (const auto& d : emu_.Get<BoardDatabase>().Devices()) {
+        printf("%s%s", first ? "" : ", ", d.id.c_str());
         first = false;
     }
     printf("\n\n");

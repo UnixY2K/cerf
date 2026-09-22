@@ -3,6 +3,7 @@
 #include "imx51_audio_player.h"
 
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../cpu/emulated_memory.h"
@@ -43,7 +44,7 @@ constexpr uint32_t kNativeRateHz = 48000u;
 
 bool Imx51AudioPlayer::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::iMX51;
+    return bd && bd->GetSocId() == SocId::Imx51;
 }
 
 void Imx51AudioPlayer::OnReady() {

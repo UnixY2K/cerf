@@ -50,14 +50,14 @@ struct Vr41xxRegWindowModel {
     Vr41xxRegSpec reg[kMaxRegs];
 };
 
-template <SocFamily Soc, Vr41xxRegWindowModel M>
+template <const std::string_view& Soc, Vr41xxRegWindowModel M>
 class Vr41xxRegWindowBase : public Peripheral {
 public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == Soc;
+        return bd && bd->GetSocId() == Soc;
     }
 
     void OnReady() override {

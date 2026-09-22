@@ -111,6 +111,7 @@ $files = @(
     @{ Name = 'agent_docs/launcher.md';              Path = 'agent_docs\launcher.md' }
     @{ Name = 'agent_docs/psychological_support.md'; Path = 'agent_docs\psychological_support.md' }
     @{ Name = 'agent_docs/leds.md';                  Path = 'agent_docs\leds.md' }
+    @{ Name = 'agent_docs/database.md';              Path = 'agent_docs\database.md' }
 )
 
 do {

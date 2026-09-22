@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "odo_id.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 
@@ -37,7 +38,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::OdoArm720;
+        return bd && bd->GetBoardId() == BoardId::Odo;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

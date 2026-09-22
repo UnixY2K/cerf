@@ -6,13 +6,15 @@
 #include "../../core/log.h"
 #include "../../core/rate_probe.h"
 #include "../../boards/board_context.h"
+#include "sa1110_id.h"
+#include "sa1100_id.h"
 #include "../../jit/arm/arm_jit.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../state/state_stream.h"
 
 bool Sa11xxIntc::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && (bd->GetSoc() == SocFamily::SA1110 || bd->GetSoc() == SocFamily::SA1100);
+    return bd && (bd->GetSocId() == SocId::Sa1110 || bd->GetSocId() == SocId::Sa1100);
 }
 
 void Sa11xxIntc::OnReady() {

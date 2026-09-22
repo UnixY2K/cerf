@@ -1,6 +1,7 @@
 #include "s3c2410_dma.h"
 
 #include "../../boards/board_context.h"
+#include "s3c2410_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../cpu/physical_bus.h"
@@ -81,7 +82,7 @@ constexpr S3C2410DmaSource kRequestSources[4][5] = {
 
 bool S3C2410Dma::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::S3C2410;
+    return bd && bd->GetSocId() == SocId::S3c2410;
 }
 
 void S3C2410Dma::OnReady() {

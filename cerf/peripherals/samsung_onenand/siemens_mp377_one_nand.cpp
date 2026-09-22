@@ -6,6 +6,7 @@
 #include "../../state/state_stream.h"
 #include "../../socs/guest_cpu_reset.h"
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 
 #include <algorithm>
 #include <array>
@@ -46,7 +47,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::SiemensMP377;
+        return bd && bd->GetBoardId() == BoardId::SiemensMp377;
     }
     void OnReady() override {
         backing_.assign(kBackingSize, uint8_t{0xFFu});

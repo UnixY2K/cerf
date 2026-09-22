@@ -2,6 +2,7 @@
 
 #include "../../core/cerf_emulator.h"
 #include "../board_context.h"
+#include "siemens_p177_id.h"
 
 namespace {
 
@@ -13,7 +14,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::SiemensP177;
+        return bd && bd->GetBoardId() == BoardId::SiemensP177;
     }
 
     uint64_t FinHz() const override { return 12000000u; }

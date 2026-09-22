@@ -6,6 +6,7 @@
 #include "../../socs/vr41xx/vr41xx_giu.h"
 #include "../../state/state_stream.h"
 #include "../board_context.h"
+#include "nec_mobilepro_700_id.h"
 
 namespace {
 
@@ -30,7 +31,7 @@ NecMobilePro700Pcic::NecMobilePro700Pcic(CerfEmulator& emu)
 
 bool NecMobilePro700Pcic::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::NecMobilePro700;
+    return bd && bd->GetBoardId() == BoardId::NecMobilepro700;
 }
 
 void NecMobilePro700Pcic::OnReady() {

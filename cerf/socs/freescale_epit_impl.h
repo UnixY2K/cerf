@@ -71,14 +71,14 @@ constexpr uint32_t kCntResetValue = 0xFFFFFFFFu;
 
 constexpr auto kPollInterval = std::chrono::microseconds(100);
 
-template <uint32_t kBase, SocFamily kSoc>
+template <uint32_t kBase, const std::string_view& kSoc>
 class FreescaleEpitBase : public Peripheral {
 public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == kSoc;
+        return bd && bd->GetSocId() == kSoc;
     }
     void OnReady() override {
         auto& cfg = emu_.Get<ArmProcessorConfig>();

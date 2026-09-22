@@ -1,6 +1,7 @@
 #include "pxa27x_lcd.h"
 
 #include "../../boards/board_context.h"
+#include "pxa270_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../cpu/emulated_memory.h"
 #include "../../host/host_window.h"
@@ -73,7 +74,7 @@ constexpr int kIntcLcdBit = 17;
 
 bool Pxa27xLcd::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::PXA27x;
+    return bd && bd->GetSocId() == SocId::Pxa270;
 }
 
 void Pxa27xLcd::OnReady() {

@@ -6,6 +6,7 @@
 #include "../../host/panel_frame_renderer.h"
 #include "../../lcd/panel_scanout.h"
 #include "../board_context.h"
+#include "casio_cassiopeia_e55_id.h"
 
 #include <optional>
 
@@ -19,7 +20,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::CasioCassiopeiaE55;
+        return bd && bd->GetBoardId() == BoardId::CasioCassiopeiaE55;
     }
 
     void PresentedSize(uint32_t& w, uint32_t& h) override {

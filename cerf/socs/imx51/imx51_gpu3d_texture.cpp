@@ -4,6 +4,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include <algorithm>
 #include <cmath>
 #include <bit>
@@ -11,7 +12,7 @@
 REGISTER_SERVICE(Imx51Gpu3dTexture);
 bool Imx51Gpu3dTexture::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetSoc() == SocFamily::iMX51;
+    return board && board->GetSocId() == SocId::Imx51;
 }
 
 /* Mesa e97ad748, a2xx.xml: A2XX_SQ_TEX; instr-a2xx.h: instr_fetch_tex_t;

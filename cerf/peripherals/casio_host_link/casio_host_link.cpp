@@ -1,6 +1,8 @@
 #include "../peripheral_base.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/casio_toricomail/casio_toricomail_id.h"
+#include "../../boards/casio_cassiopeia_e55/casio_cassiopeia_e55_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../peripherals/peripheral_dispatcher.h"
@@ -32,8 +34,8 @@ public:
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
         if (!bd) return false;
-        const auto b = bd->GetBoard();
-        return b == Board::CasioToricomail || b == Board::CasioCassiopeiaE55;
+        const auto b = bd->GetBoardId();
+        return b == BoardId::CasioToricomail || b == BoardId::CasioCassiopeiaE55;
     }
     void OnReady() override { emu_.Get<PeripheralDispatcher>().Register(this); }
 

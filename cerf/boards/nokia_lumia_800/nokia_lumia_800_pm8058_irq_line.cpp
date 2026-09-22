@@ -2,6 +2,7 @@
 #include "../../peripherals/qualcomm_pm8058/pm8058_irq_line.h"
 #include "../../socs/msm8255/msm8255_gpio_bus.h"
 #include "../board_context.h"
+#include "nokia_lumia_800_id.h"
 
 #include <cstdint>
 
@@ -15,7 +16,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::NokiaLumia800;
+        return bd && bd->GetBoardId() == BoardId::NokiaLumia800;
     }
 
     void OnReady() override { SetPm8058IrqAsserted(false); }

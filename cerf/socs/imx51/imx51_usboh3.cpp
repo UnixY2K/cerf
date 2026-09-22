@@ -5,6 +5,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include "../../cpu/emulated_memory.h"
 #include "../../peripherals/peripheral_dispatcher.h"
 #include "../../core/virtual_clock.h"
@@ -97,7 +98,7 @@ REGISTER_SERVICE(Imx51Usboh3);
 
 bool Imx51Usboh3::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::iMX51;
+    return bd && bd->GetSocId() == SocId::Imx51;
 }
 
 void Imx51Usboh3::OnReady() {

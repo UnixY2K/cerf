@@ -3,6 +3,7 @@
 #include "../../socs/i2c_slave.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/ford_sync2/ford_sync_2_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../state/state_stream.h"
 
@@ -19,7 +20,7 @@ public:
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetBoard() == Board::FordSyncGen2;
+        return bd && bd->GetBoardId() == BoardId::FordSync2;
     }
 
     bool MatchesAddress(uint8_t slave_addr) const override {

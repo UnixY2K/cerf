@@ -14,14 +14,14 @@ namespace cerf_vr41xx_fir_detail {
 
 /* VR41xx FIR (Fast IrDA Interface Unit): IRSR1 at block offset 0x18
    (VR4121 UM Table 27-1 p588 / VR4102 UM Table 26-1 p498). */
-template <SocFamily Soc, uint32_t Base>
+template <const std::string_view& Soc, uint32_t Base>
 class Vr41xxFirBase : public Peripheral {
 public:
     using Peripheral::Peripheral;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == Soc;
+        return bd && bd->GetSocId() == Soc;
     }
     void OnReady() override {
         emu_.Get<PeripheralDispatcher>().Register(this);

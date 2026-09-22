@@ -6,6 +6,7 @@
 #include "msm8255_smem.h"
 
 #include "../../boards/board_context.h"
+#include "msm8255_id.h"
 #include "../../boot/guest_cold_boot.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
@@ -99,7 +100,7 @@ constexpr char kDalPortName[] = "DAL0";
 
 bool Msm8255ModemPeer::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::MSM8255;
+    return bd && bd->GetSocId() == SocId::Msm8255;
 }
 
 void Msm8255ModemPeer::OnReady() {

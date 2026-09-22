@@ -53,14 +53,14 @@ struct Vr41xxGiuModel {
     bool     podat_h_retained_on_reset;  /* GIUPODATH After-reset / Other-resets column */
 };
 
-template <SocFamily Soc, Vr41xxGiuModel M>
+template <const std::string_view& Soc, Vr41xxGiuModel M>
 class Vr41xxGiuBase : public Vr41xxGiu {
 public:
     using Vr41xxGiu::Vr41xxGiu;
 
     bool ShouldRegister() override {
         auto* bd = emu_.TryGet<BoardContext>();
-        return bd && bd->GetSoc() == Soc;
+        return bd && bd->GetSocId() == Soc;
     }
 
     void OnReady() override {

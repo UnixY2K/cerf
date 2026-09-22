@@ -4,13 +4,14 @@
 #include "siemens_mp377_sm501_video.h"
 
 #include "../../boards/board_context.h"
+#include "../../boards/siemens_mp377/siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 
 namespace siemens_mp377 {
 
 bool SiemensMp377Sm501Video::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::SiemensMP377;
+    return bd && bd->GetBoardId() == BoardId::SiemensMp377;
 }
 
 const uint8_t* SiemensMp377Sm501Video::Vram() {

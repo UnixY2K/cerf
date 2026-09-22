@@ -5,6 +5,7 @@
 #include <vector>
 #include "ford_sync2_temperature_section.h"
 #include "../board_context.h"
+#include "ford_sync_2_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../host/host_icon_cache.h"
 #include "../../host/host_widget_registry.h"
@@ -36,7 +37,7 @@ REGISTER_SERVICE(FordSync2CarWidget);
 
 bool FordSync2CarWidget::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetBoard() == Board::FordSyncGen2;
+    return board && board->GetBoardId() == BoardId::FordSync2;
 }
 void FordSync2CarWidget::OnReady() { emu_.Get<HostWidgetRegistry>().Register(this); }
 std::wstring FordSync2CarWidget::Tooltip() const {

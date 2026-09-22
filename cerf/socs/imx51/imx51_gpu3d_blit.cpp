@@ -4,13 +4,14 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../boards/board_context.h"
+#include "imx51_id.h"
 #include <cstring>
 
 REGISTER_SERVICE(Imx51Gpu3dBlit);
 
 bool Imx51Gpu3dBlit::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetSoc() == SocFamily::iMX51;
+    return board && board->GetSocId() == SocId::Imx51;
 }
 
 void Imx51Gpu3dBlit::HaltUnsupportedAccess(const char* op, uint32_t address, uint64_t value) const {

@@ -3,6 +3,7 @@
 #include "msm8255_value_set.h"
 
 #include "../../boards/board_context.h"
+#include "msm8255_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../state/state_stream.h"
@@ -62,7 +63,7 @@ REGISTER_SERVICE(Msm8255ClockRates);
 
 bool Msm8255ClockRates::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::MSM8255;
+    return bd && bd->GetSocId() == SocId::Msm8255;
 }
 
 uint32_t Msm8255ClockRates::ReportClockFreqKhz(uint32_t clock) {

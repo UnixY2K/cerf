@@ -3,6 +3,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/rate_probe.h"
 #include "../../boards/board_context.h"
+#include "../../cpu/vr5500/vr5500_id.h"
 #include "../../jit/mips/mips_jit.h"
 #include "../../state/state_stream.h"
 
@@ -23,7 +24,7 @@ REGISTER_SERVICE(Vrc5477Intc);
 
 bool Vrc5477Intc::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetSoc() == SocFamily::VR5500;
+    return bd && bd->GetSocId() == SocId::Vr5500;
 }
 
 uint32_t Vrc5477Intc::StatusForLineLocked(uint32_t n) const {

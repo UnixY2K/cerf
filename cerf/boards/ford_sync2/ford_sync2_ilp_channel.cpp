@@ -2,6 +2,7 @@
 #include "ford_sync2_ilp_signals.h"
 #include "ford_sync2_vmcu_peer.h"
 #include "../board_context.h"
+#include "ford_sync_2_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../host/emulation_pause.h"
@@ -22,7 +23,7 @@ uint32_t ReadId(const uint8_t* p) {
 
 bool FordSync2IlpChannel::ShouldRegister() {
     auto* board = emu_.TryGet<BoardContext>();
-    return board && board->GetBoard() == Board::FordSyncGen2;
+    return board && board->GetBoardId() == BoardId::FordSync2;
 }
 
 bool FordSync2IlpChannel::DecodeSet(const uint8_t* data, std::size_t n,

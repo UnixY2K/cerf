@@ -4,6 +4,7 @@
 #include "../../peripherals/silicon_motion_sm501/siemens_mp377_sm501.h"
 
 #include "../../boards/board_context.h"
+#include "siemens_mp377_id.h"
 #include "../../core/cerf_emulator.h"
 #include "../../core/fatal.h"
 #include "../../state/state_stream.h"
@@ -158,7 +159,7 @@ uint16_t ClampAdc12(double value) {
 
 bool SiemensMp377TouchPanel::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::SiemensMP377;
+    return bd && bd->GetBoardId() == BoardId::SiemensMp377;
 }
 
 void SiemensMp377TouchPanel::OnReady() {

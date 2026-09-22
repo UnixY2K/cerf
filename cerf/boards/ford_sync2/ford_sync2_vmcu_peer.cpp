@@ -10,6 +10,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/log.h"
 #include "../../boards/board_context.h"
+#include "ford_sync_2_id.h"
 #include "../../socs/imx51/imx51_uart2.h"
 #include "../../state/state_stream.h"
 
@@ -18,7 +19,7 @@
 
 bool FordSync2VmcuPeer::ShouldRegister() {
     auto* bd = emu_.TryGet<BoardContext>();
-    return bd && bd->GetBoard() == Board::FordSyncGen2;
+    return bd && bd->GetBoardId() == BoardId::FordSync2;
 }
 
 void FordSync2VmcuPeer::OnReady() {
