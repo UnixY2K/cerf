@@ -1337,7 +1337,7 @@
         },
         {
           "feature_id": "guest_additions",
-          "supported": false
+          "supported": true
         }
       ],
       "notes": [],
