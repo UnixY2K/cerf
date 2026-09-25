@@ -21,6 +21,9 @@ ce_apps/**/coredll_local_filtered.def
 local_files/
 .claude/*.lock
 
+# ignore compile commands
+compile_commands.json
+
 
 # Reference materials (WinCE SDK, Platform Builder sources, etc.)
 # Only the README.md inside is tracked
