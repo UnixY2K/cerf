@@ -136,7 +136,6 @@ cerf_srcs = [
 	'lcd/panel_scanout.cpp',
 	'net/network_backend.cpp',
 	'net/null_network_backend.cpp',
-	'net/slirp_classify_frame.cpp',
 	'peripherals/amd_command_set_flash.cpp',
 	'peripherals/intel_command_set_flash.cpp',
 	'peripherals/open_bus_window.cpp',
@@ -169,6 +168,7 @@ endif
 if slirp_dep.found()
 	cerf_srcs += [
 		'net/slirp_backend.cpp',
+		'net/slirp_classify_frame.cpp',
 		'net/slirp_dns_aaaa_strip.cpp',
 		'net/slirp_icmp_echo.cpp',
 		'net/slirp_ipv6_probe.cpp',
