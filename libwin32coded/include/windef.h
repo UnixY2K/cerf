@@ -1,16 +1,12 @@
 #pragma once
 // https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types
 #include "winnt.h"
+#include "basetsd.h"
 #ifdef __cplusplus
 #include <cstdio>
 #else
 #include <stdio.h>
 #endif
-
-typedef uintptr_t UINT_PTR;
-typedef intptr_t INT_PTR;
-typedef ULONG_PTR SIZE_T;
-typedef ULONG_PTR DWORD_PTR;
 
 typedef uint32_t UINT;
 typedef int32_t INT;
@@ -19,7 +15,6 @@ typedef LONG_PTR LPARAM;
 typedef LONG_PTR LRESULT;
 
 typedef DWORD *LPDWORD;
-typedef uint64_t DWORD64;
 typedef WORD *LPWORD;
 typedef uint16_t USHORT;
 typedef WORD ATOM;
@@ -71,3 +66,8 @@ typedef struct tagPOINT {
 } POINT, *PPOINT;
 
 #define MAX_PATH FILENAME_MAX
+
+#define LOWORD(value)           ((WORD)(((ULONG_PTR)(value)) & 0xffff))
+#define HIWORD(value)           ((WORD)((((ULONG_PTR)(value)) >> 16) & 0xffff))
+#define MAKEWPARAM(low, high)   ((WPARAM)((((WORD)(low)) & 0xffff) | (((ULONG_PTR)((WORD)(high))) << 16)))
+#define MAKELPARAM(low, high)   ((LPARAM)((((ULONG_PTR)(WORD)(low)) & 0xffff) | (((ULONG_PTR)(WORD)(high)) << 16)))

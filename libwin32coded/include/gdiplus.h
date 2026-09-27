@@ -82,3 +82,5 @@ void GetImageEncodersSize(UINT* count, UINT* size);
 Status GetImageEncoders(UINT count, UINT size, ImageCodecInfo* codecs);
 
 }
+
+using Gdiplus::PixelFormat32bppRGB;

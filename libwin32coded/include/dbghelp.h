@@ -40,7 +40,9 @@ typedef struct _SYMBOL_INFO {
 } SYMBOL_INFO, *PSYMBOL_INFO;
 
 #define AddrModeFlat 3
+#ifndef IMAGE_FILE_MACHINE_I386
 #define IMAGE_FILE_MACHINE_I386 0x014c
+#endif
 
 BOOL SymInitialize(HANDLE hProcess, LPCSTR UserSearchPath, BOOL fInvadeProcess);
 BOOL SymFromAddr(HANDLE hProcess, DWORD64 Address, DWORD64 *Displacement,

@@ -1,5 +1,4 @@
 #pragma once
-#include "windows.h"
 
 #ifndef __WIN32
 #include <cerrno>

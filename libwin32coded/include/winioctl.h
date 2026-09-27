@@ -1,5 +1,5 @@
 #pragma once
-#include "windows.h"
+#include "winnt.h"
 
 typedef struct _FILE_ZERO_DATA_INFORMATION {
 	LARGE_INTEGER FileOffset;

@@ -1,7 +1,7 @@
 #ifndef _WIN32
 // even if included by mistake this file should not be compiled under windows
 
-#include "win_compat.h"
+#include "windows.h"
 
 #ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>

@@ -6,6 +6,9 @@ typedef uint32_t MMRESULT;
 #define TIME_PERIODIC           0x0001
 #define TIME_CALLBACK_FUNCTION  0x0000
 
+typedef void (CALLBACK *LPTIMECALLBACK)(UINT, UINT, DWORD_PTR, DWORD_PTR,
+                                         DWORD_PTR);
+
 MMRESULT timeSetEvent(UINT uDelay, UINT uResolution, LPTIMECALLBACK lpTimeProc,
                       DWORD_PTR dwUser, DWORD fuEvent);
 MMRESULT timeKillEvent(UINT uTimerID);
