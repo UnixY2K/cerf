@@ -1,6 +1,9 @@
 #pragma once
 #include "windef.h"
 
+#define BCM_FIRST        0x1600
+#define BCM_GETIDEALSIZE (BCM_FIRST + 0x0001)
+
 typedef struct tagNMHDR {
 	HWND hwndFrom;
 	UINT_PTR idFrom;
@@ -126,19 +129,20 @@ typedef struct tagLVCOLUMNW {
 #define NM_FIRST              (0U - 0U)
 #define NM_CLICK              (NM_FIRST - 2)
 #define NM_RETURN             (NM_FIRST - 4)
+#define HDM_GETITEMCOUNT      (WM_USER + 0)
 #define LVM_INSERTITEMW       (WM_USER + 77)
 #define LVM_SETITEMTEXTW      (WM_USER + 116)
 #define LVM_GETNEXTITEM       (WM_USER + 12)
 #define LVM_GETITEMW          (WM_USER + 75)
-#define LVNI_SELECTED         0x0002
+#define LVM_INSERTCOLUMNW     (WM_USER + 97)
 #define LVIF_TEXT             0x0001
-#define LVIF_PARAM            0x0004
+#define LVNI_SELECTED         0x0002
 #define LVCF_WIDTH            0x0002
 #define LVCF_TEXT             0x0004
-#define LVM_INSERTCOLUMNW     (WM_USER + 97)
-#define LVM_GETITEMW          (WM_USER + 75)
-#define HDM_GETITEMCOUNT      (WM_USER + 0)
+#define LVIF_PARAM            0x0004
 #define WM_SETREDRAW          0x000B
+#define LM_FIRST              0x0700
+#define LM_GETIDEALSIZE       (LM_FIRST + 0x0001)
 
 #define ListView_InsertItem(hwnd, item)                                        \
 	((int)SendMessageW((hwnd), LVM_INSERTITEMW, 0, (LPARAM)(item)))

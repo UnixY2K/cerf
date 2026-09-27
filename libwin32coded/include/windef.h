@@ -1,7 +1,7 @@
 #pragma once
 // https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types
-#include "winnt.h"
 #include "basetsd.h"
+#include "winnt.h"
 #ifdef __cplusplus
 #include <cstdio>
 #else
@@ -65,9 +65,17 @@ typedef struct tagPOINT {
 	LONG y;
 } POINT, *PPOINT;
 
+typedef struct tagSIZE {
+	LONG cx;
+	LONG cy;
+} SIZE, *PSIZE, *LPSIZE;
+
 #define MAX_PATH FILENAME_MAX
 
-#define LOWORD(value)           ((WORD)(((ULONG_PTR)(value)) & 0xffff))
-#define HIWORD(value)           ((WORD)((((ULONG_PTR)(value)) >> 16) & 0xffff))
-#define MAKEWPARAM(low, high)   ((WPARAM)((((WORD)(low)) & 0xffff) | (((ULONG_PTR)((WORD)(high))) << 16)))
-#define MAKELPARAM(low, high)   ((LPARAM)((((ULONG_PTR)(WORD)(low)) & 0xffff) | (((ULONG_PTR)(WORD)(high)) << 16)))
+#define LOWORD(value) ((WORD)(((ULONG_PTR)(value)) & 0xffff))
+#define HIWORD(value) ((WORD)((((ULONG_PTR)(value)) >> 16) & 0xffff))
+#define MAKEWPARAM(low, high)                                                  \
+	((WPARAM)((((WORD)(low)) & 0xffff) | (((ULONG_PTR)((WORD)(high))) << 16)))
+#define MAKELPARAM(low, high)                                                  \
+	((LPARAM)((((ULONG_PTR)(WORD)(low)) & 0xffff) |                            \
+	          (((ULONG_PTR)(WORD)(high)) << 16)))

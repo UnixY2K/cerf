@@ -205,6 +205,7 @@ typedef struct tagSCROLLINFO {
 #define WM_GETMINMAXINFO   0x0024
 #define WM_DRAWITEM        0x002B
 #define WM_SETFONT         0x0030
+#define WM_GETFONT         0x0031
 #define WM_NCCREATE        0x0081
 #define WM_NCPAINT         0x0085
 #define WM_NCACTIVATE      0x0086
@@ -365,6 +366,7 @@ typedef struct tagSCROLLINFO {
 #define SWP_NOSIZE        0x0001
 #define SWP_NOMOVE        0x0002
 #define SWP_NOZORDER      0x0004
+#define SWP_NOACTIVATE    0x0010
 #define SWP_FRAMECHANGED  0x0020
 #define SWP_NOOWNERZORDER 0x0200
 
