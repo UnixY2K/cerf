@@ -11,3 +11,5 @@
 #include "winbase.h"
 #include "wingdi.h"
 #include "winuser.h"
+
+#include "extra/winintrin.h"
