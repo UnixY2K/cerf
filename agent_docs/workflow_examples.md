@@ -59,9 +59,8 @@ Delete such temporary code when you no longer need it.
 Temp scaffolding reads a host environment variable. It never reads that value from a constant
 in the file. An absent or zero value leaves it inert, so one build serves both the stock run and
 the invasive run. The variable carries a value, not only an on/off flag - a delay, a count, a
-guest address. Set the variable in front of the runner.
-`cerf/host/presented_frame_renderer.cpp` reads `CERF_LCD_STALL_MS` this way. A user-facing
-option is a CLI flag instead.
+guest address. The variable goes in front of the runner command. A user-facing option is a
+CLI flag instead.
 
 ## Autonomous board development
 
@@ -69,7 +68,7 @@ Claude can implement a board end-to-end without user interaction through the fol
 
 Hit fatal exit -> Implemented the feature -> Ran - it works -> Spawning Skill(verify) until LEGIT -> Repeat
 
-It is also suggested for user to set /goal harness, which demands UI working rendering and device confirmed to be usable. In the same /goal user should demand autonomous workflow per project rules and invoking /bad, /verify-options, /bailout on turn ends.
+It is also suggested for user to set /goal harness, which demands UI working rendering and device confirmed to be usable. In the same /goal user should demand autonomous workflow per project rules and invoking /bad and /verify-options on turn ends.
 
 The user also should manually invoke /tracking skill on session boundaries (never agent invoked).
 
@@ -78,3 +77,9 @@ Skill(verify) wont let agent smuggle guesses and rule violations into the tree. 
 That also aligns with the AI-preferred model. AI can build an enormous system accross many session, but can't in one prompt. Everything AI builds here is a simple, dumb fatal <-> implement case, each is a separate chunk. Prompt "AI, implement enormous subsystem now" would give you broken subsystem where AI replaces implementations with broken stubs. Fatal <-> implement loop gives AI an ability to split chunk clearly: from fatal to implementation and repeat with static verification. That's a resolution to all AI problems at once and also is an incredible verification pattern.
 
 All fatals are usually up to shell boot, once there is no fatal the investigation starts. It's either about "why no fatal and no shell" or "why touch/key interactions give no shell". The end result is having an interactive basic device, with everything rendering, and the most important interaction devices being implemented. 
+
+## A background task under `/goal`
+
+Claude Code can hold back the completion notice of a background task while a `/goal` stop hook is active. The task ends, but the stop hook reaches the agent first. The notice arrives only after the next tool call.
+
+If the stop hook fires while a background task that you started runs, the task has probably ended. Make one tool call that reads the result of the task, for example the tail of the build log or the built file. The held notice then arrives. Then continue the work, and do not end the turn on the hook. This one call is not polling, because it reads the task once, after the task has probably ended.

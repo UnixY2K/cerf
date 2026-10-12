@@ -8,20 +8,25 @@ from typing import Callable, Optional
 from device_state import (DeviceBundle, LIVE_STATE_SCREENSHOT_FILENAME,
                           SAVED_STATE_SCREENSHOT_FILENAME, running_status,
                           saved_state_info)
+import glyph_images
 import ui_theme as theme
 
 PLAY_RUNNING = "#3fb950"
+PAUSE_OUTLINE = "#101010"
 BOX_BG = "#000000"
 
 
 class PreviewTile:
     def __init__(self, parent: tk.Misc, devices_dir: Path, width: int,
-                 height: int, glyph: int, bg: str, box_always: bool = False,
+                 height: int, glyph: int,
                  on_click: Optional[Callable[[], None]] = None):
-        self.canvas = tk.Canvas(parent, width=width, height=height, bg=bg,
-                                highlightthickness=0, bd=0, cursor="hand2")
+        self.canvas = tk.Canvas(parent, width=width, height=height,
+                                bg=BOX_BG, highlightthickness=0, bd=0,
+                                cursor="hand2")
         self._init_drawing(self.canvas, "preview", devices_dir, width, height,
-                           glyph, box_always)
+                           glyph)
+        self.canvas.bind("<Configure>", lambda e: self.move_to(
+            (e.width - self._w) // 2, (e.height - self._h) // 2))
         if on_click is not None:
             self.canvas.bind("<Button-1>", lambda _e: on_click())
 
@@ -30,19 +35,16 @@ class PreviewTile:
                   width: int, height: int, glyph: int) -> "PreviewTile":
         tile = cls.__new__(cls)
         tile.canvas = canvas
-        tile._init_drawing(canvas, tag, devices_dir, width, height, glyph,
-                           False)
+        tile._init_drawing(canvas, tag, devices_dir, width, height, glyph)
         return tile
 
     def _init_drawing(self, canvas: tk.Canvas, tag: str, devices_dir: Path,
-                      width: int, height: int, glyph: int,
-                      box_always: bool) -> None:
+                      width: int, height: int, glyph: int) -> None:
         self._tag = tag
         self._x = 0
         self._y = 0
         self._devices_dir = devices_dir
         self._w, self._h, self._glyph = width, height, glyph
-        self._box_always = box_always
         self._device: Optional[DeviceBundle] = None
         self._sig = ""
         self._img: Optional[tk.PhotoImage] = None
@@ -60,8 +62,7 @@ class PreviewTile:
         self._device = d
         self.refresh()
 
-    def retheme(self, bg: str) -> None:
-        self.canvas.config(bg=bg)
+    def retheme(self) -> None:
         self._sig = ""
         self.refresh()
 
@@ -81,7 +82,7 @@ class PreviewTile:
         cv.delete(self._tag)
         self._img = None
         x0, y0 = self._x, self._y
-        if state != "stopped" or self._box_always:
+        if state != "stopped":
             cv.create_rectangle(x0 - 1, y0 - 1, x0 + self._w + 1,
                                 y0 + self._h + 1, fill=BOX_BG, outline="",
                                 tags=self._tag)
@@ -91,13 +92,15 @@ class PreviewTile:
                 self._img = img
                 cv.create_image(x0 + self._w // 2, y0 + self._h // 2,
                                 image=img, anchor="center", tags=self._tag)
-        cx, cy, s = x0 + self._w / 2, y0 + self._h / 2, self._glyph
+        s = self._glyph
         if state == "running":
-            self._play(cv, cx, cy, s, PLAY_RUNNING)
+            glyph = glyph_images.play(cv, s, PLAY_RUNNING)
         elif state == "paused":
-            self._pause(cv, cx, cy, s, theme.UPDATE_LINK, "#101010")
+            glyph = glyph_images.pause(cv, s, theme.UPDATE_LINK, PAUSE_OUTLINE)
         else:
-            self._play(cv, cx, cy, s, theme.PREVIEW_STOPPED)
+            glyph = glyph_images.play(cv, s, theme.PREVIEW_STOPPED)
+        cv.create_image(x0 + self._w // 2, y0 + self._h // 2, image=glyph,
+                        anchor="center", tags=self._tag)
 
     def _state(self, d: DeviceBundle) -> str:
         dirpath = self._devices_dir / d.name
@@ -146,17 +149,3 @@ class PreviewTile:
         if b > 1:
             out = out.subsample(b, b)
         return out
-
-    def _play(self, cv: tk.Canvas, cx: float, cy: float, s: float,
-              fill: str, outline: str = "") -> None:
-        cv.create_polygon(cx - s * 0.6, cy - s, cx - s * 0.6, cy + s,
-                          cx + s, cy, fill=fill, outline=outline, width=1,
-                          tags=self._tag)
-
-    def _pause(self, cv: tk.Canvas, cx: float, cy: float, s: float,
-               fill: str, outline: str = "") -> None:
-        bw, gap, bh = s * 0.42, s * 0.32, s * 1.7
-        cv.create_rectangle(cx - gap - bw, cy - bh / 2, cx - gap, cy + bh / 2,
-                            fill=fill, outline=outline, tags=self._tag)
-        cv.create_rectangle(cx + gap, cy - bh / 2, cx + gap + bw, cy + bh / 2,
-                            fill=fill, outline=outline, tags=self._tag)

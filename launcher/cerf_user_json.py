@@ -196,9 +196,15 @@ def _extract_persist_fields(obj) -> dict:
         fs = ga.get("override_font_size")
         if isinstance(fs, int) and not isinstance(fs, bool):
             out["font_size"] = fs
+        ct = ga.get("override_cleartype")
+        if isinstance(ct, bool):
+            out["cleartype"] = ct
         sf = ga.get("share_folder")
         if isinstance(sf, str) and sf:
             out["share_folder"] = sf
+        mp = ga.get("shared_folder_mount_point")
+        if isinstance(mp, str) and mp:
+            out["mount_point"] = mp
     if isinstance(obj.get("full_screen"), bool):
         out["full_screen"] = obj["full_screen"]
     board = obj.get("board")
@@ -251,7 +257,8 @@ def write_persist_overrides(device_dir: Path, fields: dict) -> None:
         ga_prev = obj.get("guest_additions")
         ga_obj: dict = dict(ga_prev) if isinstance(ga_prev, dict) else {}
         for key in ("enabled", "override_color_scheme", "override_font_size",
-                    "share_folder"):
+                    "override_cleartype", "share_folder",
+                    "shared_folder_mount_point"):
             ga_obj.pop(key, None)
         if "guest_additions" in fields:
             ga_obj["enabled"] = fields["guest_additions"]
@@ -259,8 +266,12 @@ def write_persist_overrides(device_dir: Path, fields: dict) -> None:
             ga_obj["override_color_scheme"] = cs
         if fs is not None:
             ga_obj["override_font_size"] = fs
+        if "cleartype" in fields:
+            ga_obj["override_cleartype"] = fields["cleartype"]
         if fields.get("share_folder"):
             ga_obj["share_folder"] = fields["share_folder"]
+        if fields.get("mount_point"):
+            ga_obj["shared_folder_mount_point"] = fields["mount_point"]
         if ga_obj:
             obj["guest_additions"] = ga_obj
         else:

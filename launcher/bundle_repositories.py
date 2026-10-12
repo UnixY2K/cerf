@@ -3,11 +3,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from app_paths import install_root
 
-MAIN_REPOSITORY_URL = "https://cerf-bundles.dz3n.net/cerf-bundles"
 CONFIG_KEY = "bundle_repositories"
 _MANIFEST_NAME = "manifest.json"
 _ANALYTICS_NAME = "analytics.json"
@@ -31,14 +30,9 @@ def analytics_url_for(base_url: str) -> str:
     return base_url.rstrip("/") + "/" + _ANALYTICS_NAME
 
 
-def default_repositories() -> List[BundleRepository]:
-    return [BundleRepository(url=MAIN_REPOSITORY_URL, enabled=True)]
-
-
-def _parse_repositories(raw) -> Optional[List[BundleRepository]]:
-    """Reads the config list; a legacy "main" key on an entry is ignored."""
+def _parse_repositories(raw) -> List[BundleRepository]:
     if not isinstance(raw, list):
-        return None
+        return []
     repos: List[BundleRepository] = []
     seen: set = set()
     for item in raw:
@@ -52,7 +46,7 @@ def _parse_repositories(raw) -> Optional[List[BundleRepository]]:
             continue
         seen.add(url)
         repos.append(BundleRepository(url=url, enabled=enabled))
-    return repos or None
+    return repos
 
 
 def load_config(path: Path) -> dict:
@@ -65,8 +59,7 @@ def load_config(path: Path) -> dict:
 
 
 def read_repositories() -> List[BundleRepository]:
-    repos = _parse_repositories(load_config(config_path()).get(CONFIG_KEY))
-    return repos if repos is not None else default_repositories()
+    return _parse_repositories(load_config(config_path()).get(CONFIG_KEY))
 
 
 def write_repositories(repos: List[BundleRepository]) -> None:

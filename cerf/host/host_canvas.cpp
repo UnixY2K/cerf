@@ -6,10 +6,12 @@
 #include "../core/log.h"
 #include "emulation_pause.h"
 #include "frame_renderer.h"
+#include "guest_deep_sleep.h"
 #include "host_canvas_input.h"
-#include "lcd_scan_tick.h"
+#include "host_focus_policy.h"
 #include "boot_screen.h"
 #include "hw_screen.h"
+#include "notification_overlay.h"
 #include "refresh_rate_service.h"
 
 REGISTER_SERVICE(HostCanvas);
@@ -21,6 +23,7 @@ void HostCanvas::CreateOn(HWND parent, const RECT& rect,
     const int rate = emu_.Get<RefreshRateService>().GetRefreshRate();
     const UINT interval = rate > 0 ? (UINT)(1000 / rate) : 16;
     canvas_.CreateOn(parent, rect, surf_w, surf_h, interval < 1 ? 1 : interval);
+    emu_.Get<HostFocusPolicy>().Focus(canvas_.Hwnd());
     canvas_.SetFramebufferActive(tab_ == Tab::Framebuffer);
 }
 
@@ -46,8 +49,6 @@ void HostCanvas::RearmFramebufferAutoSwitch() {
 }
 
 void HostCanvas::OnPresentTick() {
-    if (auto* tick = emu_.TryGet<LcdScanTick>()) tick->OnHostTick();
-
     const bool has_frame = canvas_.SourceHasFrame();
     if (has_frame && !latched_once_) {
         latched_once_ = true;
@@ -57,17 +58,6 @@ void HostCanvas::OnPresentTick() {
             canvas_.SetFramebufferActive(true);
         }
     }
-}
-
-void HostCanvas::RememberTabForResume() {
-    resume_tab_      = tab_;
-    have_resume_tab_ = true;
-}
-
-void HostCanvas::RestoreTabForResume() {
-    if (!have_resume_tab_) return;
-    have_resume_tab_ = false;
-    SetTab(resume_tab_, false);
 }
 
 bool HostCanvas::RenderAltContent(HDC dc, uint32_t* bits, int w, int h) {
@@ -81,7 +71,12 @@ bool HostCanvas::RenderAltContent(HDC dc, uint32_t* bits, int w, int h) {
 }
 
 bool HostCanvas::ShouldDesaturatePresent() {
-    return tab_ == Tab::Framebuffer && emu_.Get<EmulationPause>().IsPaused();
+    return tab_ == Tab::Framebuffer &&
+           (emu_.Get<EmulationPause>().IsPaused() || emu_.Get<GuestDeepSleep>().Asleep());
+}
+
+void HostCanvas::RenderOverlay(HDC dc, int w, int h) {
+    emu_.Get<NotificationOverlay>().RenderInto(canvas_.Hwnd(), dc, w, h);
 }
 
 bool HostCanvas::HandleInput(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp,

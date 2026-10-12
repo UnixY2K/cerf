@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 from pathlib import Path
 from typing import List
 
-_THIS_DIR = Path(__file__).resolve().parent
+_THIS_DIR = Path(os.path.abspath(__file__)).parent
 if str(_THIS_DIR) not in sys.path:
     sys.path.insert(0, str(_THIS_DIR))
 
@@ -15,6 +16,7 @@ from cli_console import attach_parent_console
 from install_options import parse_options
 from launcher_cli import run_cli
 from operations import BundleManager
+from text_context_menu import TextContextMenu
 from transactional_crash import (TRANSACTIONAL_CRASH_COMMAND,
                                  run_transactional_crash)
 from ui_theme import enable_dpi_awareness
@@ -74,6 +76,7 @@ def main(argv: List[str]) -> int:
     manager = BundleManager(devices_dir)
     cerf_exe = resolve_cerf_exe()
     app = LauncherApp(manager, cerf_exe, upgraded=upgraded)
+    TextContextMenu(app)
     try:
         app.mainloop()
     except Exception:

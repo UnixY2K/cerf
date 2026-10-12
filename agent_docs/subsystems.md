@@ -395,6 +395,9 @@ concretes (strategy pattern, selected by `BoardContext`).
   `BootBar`.
   - `cerf/host/hw_screen.{h,cpp}`
 
+- **`NotificationStack`** is the card stack over every canvas tab, and it takes
+  only notices that interrupt the user's workflow, never routine events.
+
 - **`BootScreen`** - the CERF-logo boot animation behind the `Tab::Boot` tab,
   plus the `BootBar`. The 60 Hz present loop drives it in time, with no
   thread. `Restart` (guest reboot / deep-sleep wake) and
@@ -469,8 +472,8 @@ concretes (strategy pattern, selected by `BoardContext`).
   happen on the UI thread. - `cerf/host/host_input_capture.{h,cpp}`
 
 - **`HostStatusBar`** - the bottom status bar. It renders the ordered widget
-  set of `HostWidgetRegistry` (icons + per-icon tooltips, left-click →
-  primary action, right-click → declarative popup). The capture/lock
+  set of `HostWidgetRegistry` (icons and per-icon tooltips), and it sends
+  each mouse click to its widget. The capture/lock
   indicator is itself one such host-owned widget.
   - `cerf/host/host_status_bar.{h,cpp}`
 
@@ -478,7 +481,7 @@ concretes (strategy pattern, selected by `BoardContext`).
   widget framework. `HostWidget` is an abstract, **non-`Service`** interface,
   so a `Peripheral`, which already derives `Service`, implements it with no
   diamond. Any service implements it to declare a host-UI presence: a custom
-  GDI icon, tooltip, left-click action, declarative right-click menu
+  GDI icon, tooltip, optional left-click action, declarative right-click menu
   (replicated into the Actions menu), hot-path-safe RX/TX activity dots, an
   `IsEnabled()` grayscale seam, and a `WidgetGroup` order key (the terminal
   `InputControl` group pins rightmost). Implementers self-register with

@@ -3,13 +3,9 @@
 
 #include "include/cerf_gpe.h"
 #include "include/cerf_ddi.h"
-
-extern ULONG g_FbWidth;
-extern ULONG g_FbHeight;
-extern ULONG g_FbDpi;
-extern ULONG g_EngineVersion;
-
-void CerfReadFbRegs(void);
+#include "cerf_ddgpe.h"
+#include "cerf_eng_callbacks.h"
+#include "main.h"
 
 #define CERF_DDI_VERSION_CE3   0x00020001u
 #define CERF_DEVMODEW_SIZE_CE3 188u
@@ -106,6 +102,7 @@ extern "C" DHPDEV APIENTRY DrvEnablePDEV(DEVMODEW* pdm, LPWSTR, ULONG, HSURF*,
 
     ULONG text_caps = 0;
     if (bpp > 8) text_caps |= GCAPS_GRAY16;
+    if (bpp > 8) text_caps |= GCAPS_CLEARTYPE;
 
     const ULONG graphics_caps = pGPE->GetGraphicsCaps() | text_caps;
     const ULONG gdi_text_caps = graphics_caps & GCAPS_TEXT_CAPS;

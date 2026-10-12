@@ -92,10 +92,7 @@ void PacedWaveOut::PlayLocked(const uint8_t* bytes, uint32_t length) {
     headers_[slot].lpData         = reinterpret_cast<LPSTR>(buffers_[slot]);
     headers_[slot].dwBufferLength = length;
 
-    if (!sink_.Play(&headers_[slot])) {
-        LOG(Caution, "[%s] sink refused a %u-byte block\n", log_tag_, length);
-        CerfFatalExit(CERF_FATAL_RUNTIME_ERROR);
-    }
+    sink_.Play(&headers_[slot]);
     const auto now = std::chrono::steady_clock::now();
     slot_busy_[slot]    = true;
     ++outstanding_;
@@ -317,16 +314,40 @@ void PacedWaveOut::RefreshPositionLocked() {
     if (pending_count_ == 0) ++unfed_total_;
     position_unfed_ = unfed_total_;
     position_valid_ = false;
-    if (!sink_.IsOpen()) return;
-    MMTIME mmt{};
-    mmt.wType = TIME_SAMPLES;
-    if (waveOutGetPosition(sink_.Device(), &mmt, sizeof(mmt)) != MMSYSERR_NOERROR ||
-        mmt.wType != TIME_SAMPLES)
-        return;
-    position_        = mmt.u.sample;
+    uint32_t samples    = 0;
+    uint32_t generation = 0;
+    const bool sampled  = sink_.SamplePosition(samples, generation);
+    if (generation != sink_generation_) {
+        sink_generation_ = generation;
+        ++device_epoch_;
+    }
+    if (!sampled) return;
+    position_        = samples;
     position_wall_s_ = std::chrono::duration<double>(
                            std::chrono::steady_clock::now().time_since_epoch()).count();
     position_valid_  = true;
+}
+
+void PacedWaveOut::QueueOutputInHostBlocks(const void* host_bytes, uint32_t length) {
+    const uint32_t rate  = fmt_rate_.load(std::memory_order_acquire);
+    const uint32_t frame = static_cast<uint32_t>(fmt_channels_.load(std::memory_order_acquire)) *
+                           (fmt_bits_.load(std::memory_order_acquire) / 8u);
+    if (rate == 0u || frame == 0u || length % frame != 0u) {
+        LOG(Caution, "[%s] %u bytes queued in host blocks of a %u Hz, %u-byte-frame format\n",
+            log_tag_, length, rate, frame);
+        CerfFatalExit(CERF_FATAL_RUNTIME_ERROR);
+    }
+    const uint32_t block_frames = std::max<uint32_t>(1u, static_cast<uint32_t>(
+        static_cast<uint64_t>(rate) * kHostBlockFrames / kHostBlockRateHz));
+    const uint32_t frames = length / frame;
+    const uint32_t blocks = (frames + block_frames - 1u) / block_frames;
+    const uint8_t* bytes  = static_cast<const uint8_t*>(host_bytes);
+    uint32_t done = 0;
+    for (uint32_t i = 0; i < blocks; ++i) {
+        const uint32_t n = (frames - done) / (blocks - i);
+        QueueOutput(bytes + static_cast<size_t>(done) * frame, n * frame);
+        done += n;
+    }
 }
 
 bool PacedWaveOut::QueueOutput(const void* host_bytes, uint32_t length) {

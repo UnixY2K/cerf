@@ -4,6 +4,7 @@
 #include "cerf_emulator.h"
 #include "config_json.h"
 #include "config_mutable_fields.h"
+#include "device_not_selected_service.h"
 #include "main_config.h"
 #include "log.h"
 #include "cerf_paths.h"
@@ -94,7 +95,9 @@ void LoadFeatures(const json& root, DeviceConfig& config, const std::string& pat
         }
         CfgLoadColorScheme(ga, config, path);
         CfgLoadGaFontSize(ga, config, path);
+        CfgLoadGaClearType(ga, config, path);
         CfgLoadShareFolder(ga, config, path);
+        CfgLoadShareFolderMountPoint(ga, config, path);
         LoadGaAutorun(ga, config, path);
     }
     if (root.contains("full_screen")) {
@@ -168,6 +171,8 @@ void LoadRom(const json& root, DeviceConfig& config, const std::string& path) {
         config.rom_primary = CfgReadOptString(r, "primary", path, "rom");
     if (r.contains("eeprom"))
         config.rom_eeprom = CfgReadOptString(r, "eeprom", path, "rom");
+    if (r.contains("ce_dictionary"))
+        config.rom_ce_dictionary = CfgReadOptString(r, "ce_dictionary", path, "rom");
     if (r.contains("lumia800_user_area_erase"))
         config.rom_lumia800_user_area_erase =
             CfgReadOptString(r, "lumia800_user_area_erase", path, "rom");
@@ -361,7 +366,7 @@ void ConfigLoader::LoadInto(DeviceConfig& config) {
     }
     if (cli.device_override && cli.device_override[0])
         device_name = cli.device_override;
-    if (device_name.empty()) device_name = "cerfos";
+    if (device_name.empty()) emu_.Get<DeviceNotSelectedService>().Halt(top_path);
     config.device_name = device_name;
 
     const std::string dev_path = GetDeviceDir(device_name) + "cerf.json";
@@ -446,6 +451,8 @@ void ConfigLoader::LoadInto(DeviceConfig& config) {
             config.share_folder = a + sizeof(kArgGaShareFolder) - 1;
         } else if (strcmp(a, kArgFullScreen) == 0) {
             config.start_fullscreen = true;
+        } else if (strcmp(a, kArgNoFocus) == 0) {
+            config.no_focus = true;
         } else if (strncmp(a, kArgBoot, sizeof(kArgBoot) - 1) == 0) {
             const char* v = a + sizeof(kArgBoot) - 1;
             if      (strcmp(v, "resume") == 0) config.boot_mode = StateBootMode::Resume;
@@ -481,7 +488,7 @@ void ConfigLoader::SaveLastSaveStateMode(bool save_state) {
 
     emu_.Get<DeviceConfig>().last_save_state_mode = save_state;
 
-    std::ofstream f(top_path, std::ios::trunc);
+    std::ofstream f(Utf8ToWide(top_path.c_str()), std::ios::trunc);
     if (!f.is_open()) {
         LOG(Cfg, "Could not write '%s' to persist last_save_state_mode\n",
             top_path.c_str());

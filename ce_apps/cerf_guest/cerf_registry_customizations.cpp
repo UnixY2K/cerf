@@ -1,14 +1,14 @@
 #include <windows.h>
 
 #include "cerf_debug_log.h"
+#include "cerf_registry_customizations.h"
 #include "cerf_regs_map.h"
+#include "cerf_sync2_shell_replace.h"
+#include "main.h"
 
 #include "cerf/peripherals/cerf_virt/cerf_virt_addr_map.h"
 #include "cerf/peripherals/cerf_virt/cerf_virt_color_scheme_regs.h"
 #include "cerf/peripherals/cerf_virt/cerf_virt_fb_regs.h"
-
-extern LONG  g_FbSystemFontHeight;
-extern ULONG g_FbSystemFontPresent;
 
 typedef LONG (WINAPI *PFN_RegFlushKey)(HKEY);
 
@@ -66,7 +66,7 @@ static BOOL CerfApplySystemFont(void) {
     return TRUE;
 }
 
-static void CerfFlushRegistry(void) {
+extern "C" void CerfFlushRegistry(void) {
     HMODULE core = LoadLibraryW(L"coredll.dll");
     PFN_RegFlushKey flush = core
         ? (PFN_RegFlushKey)GetProcAddressW(core, L"RegFlushKey") : NULL;
@@ -90,6 +90,7 @@ extern "C" void CerfApplyRegistryCustomizations(void) {
     BOOL wrote = FALSE;
     if (CerfApplyColorScheme()) wrote = TRUE;
     if (CerfApplySystemFont())  wrote = TRUE;
+    if (CerfSync2ReplaceShell()) wrote = TRUE;
     if (!wrote) return;
     CerfFlushRegistry();
     CerfSignalCustomizationsApplied();

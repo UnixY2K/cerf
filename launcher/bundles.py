@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import stat
 import time
 import urllib.parse
 import urllib.request
@@ -151,6 +153,24 @@ def is_safe_bundle_name(name: str) -> bool:
     if name.split(".")[0].rstrip(" ").upper() in _WINDOWS_RESERVED_NAMES:
         return False
     return name not in {".", ".."}
+
+
+def bundle_dir_under(devices_dir: Path, name: str) -> Path:
+    if not is_safe_bundle_name(name):
+        raise BundleError(f"unsafe bundle name: {name!r}")
+    devices = Path(os.path.abspath(str(devices_dir)))
+    path = Path(os.path.abspath(str(devices / name)))
+    try:
+        path.relative_to(devices)
+    except ValueError as exc:
+        raise BundleError(f"refusing to operate outside {devices}") from exc
+    try:
+        attributes = os.lstat(str(path)).st_file_attributes
+    except FileNotFoundError:
+        return path
+    if attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+        raise BundleError(f"refusing to operate on a link: {path}")
+    return path
 
 
 def is_large_download(archive_size: Optional[int]) -> bool:
@@ -325,17 +345,9 @@ def load_analytics(repositories: List[BundleRepository]) -> Optional[dict]:
 def load_merged_manifest(
         repositories: List[BundleRepository],
 ) -> Tuple[List[RemoteBundle], List[Tuple[str, str]], Dict[str, str]]:
-    """Fetch every enabled repo's manifest. Returns the merged bundles, the
-    per-repo (url, error) failures, and each repo's published copyright-removal
-    contact keyed by repository URL. When NO repo could be fetched at all the
-    first failure is raised so the GUI surfaces it as the refresh error.
-    A manifest-version mismatch always raises - it carries the upgrade
-    notice."""
     all_bundles: List[RemoteBundle] = []
     errors: List[Tuple[str, str]] = []
     abuse_emails: Dict[str, str] = {}
-    first_exc: Optional[Exception] = None
-    fetched = 0
     for repo in repositories:
         if not repo.enabled:
             continue
@@ -344,14 +356,17 @@ def load_merged_manifest(
             all_bundles.extend(bundles)
             if abuse_email is not None:
                 abuse_emails[repo.url] = abuse_email
-            fetched += 1
         except ManifestVersionError:
             raise
         except Exception as exc:
-            if first_exc is None:
-                first_exc = exc
             errors.append((repo.url, str(exc)))
-    if not fetched and first_exc is not None:
-        raise first_exc
     all_bundles.sort(key=lambda b: b.name.lower())
     return all_bundles, errors, abuse_emails
+
+
+def repository_online(base_url: str) -> bool:
+    try:
+        _fetch_repo_bundles(base_url)
+    except Exception:
+        return False
+    return True

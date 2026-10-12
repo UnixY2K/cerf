@@ -22,9 +22,10 @@ function Show-RunnerUsage {
     Write-Host "                      An external kill leaves its .cerf_lock.N slot behind."
     Write-Host "  --log-file=PATH     Forwarded to cerf.exe. It keeps the stock cerf.log intact."
     Write-Host "                      msys and mixed-slash paths (/z/tmp/x.log, Z:/tmp/x.log) become Z:\tmp\x.log."
-    Write-Host "  --device=NAME       Forwarded to cerf.exe. Without it, cerf boots stock cerfos."
+    Write-Host "  --device=NAME       Forwarded to cerf.exe."
     Write-Host ""
-    Write-Host "The runner forwards every other argument to cerf.exe unchanged."
+    Write-Host "The runner forwards every other argument to cerf.exe unchanged, and it adds --no-focus:"
+    Write-Host "cerf.exe windows never take the foreground from another application."
     Write-Host "It waits for .build_lock, and it holds one run slot (.cerf_lock.1 to .cerf_lock.$($runLocks.Count)) while cerf.exe runs."
     Write-Host "At most $($runLocks.Count) runs occur at the same time. When every slot is held, the next run waits for a free slot."
     Write-Host ""
@@ -113,7 +114,7 @@ if (-not $timeoutRaw) {
     $problems += "--timeout must be a whole number of seconds in 1..86400 (got '$timeoutRaw')"
 }
 if (-not $logFileRaw) { $problems += "--log-file=PATH is mandatory (it keeps the stock cerf.log intact)" }
-if (-not $device)     { $problems += "--device=NAME is mandatory (without it, cerf boots stock cerfos)" }
+if (-not $device)     { $problems += "--device=NAME is mandatory" }
 
 if ($problems.Count -gt 0) {
     Show-RunnerUsage
@@ -129,6 +130,7 @@ if ($logDir -and -not (Test-Path $logDir)) {
 }
 $forward += "--log-file=$logFile"
 $forward += "--timeout=$timeout"
+$forward += "--no-focus"
 $emergencyKill = $timeout + 10
 
 $exeDir    = Join-Path $PSScriptRoot "build\Release\Win32"

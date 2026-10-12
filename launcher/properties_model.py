@@ -11,9 +11,17 @@ from device_state import DeviceBundle
 from persisted_options import (PERSIST_KEYS, auto_resolution,
                                effective_values, persist_subset)
 
-GA_KEYS = ("share_folder", "width", "height", "bpp", "dpi", "font_size",
-           "color_scheme")
-RESET_NEEDING_KEYS = ("bpp", "dpi", "font_size", "color_scheme")
+GA_KEYS = ("guest_additions", "share_folder", "mount_point", "width",
+           "height", "bpp", "dpi", "font_size", "cleartype", "color_scheme")
+REBOOT_KEYS = ("bpp", "dpi", "font_size", "color_scheme")
+LIVE_RESIZE_KEYS = ("width", "height")
+LIVE_RESIZE_MIN_CE_MAJOR = 4
+
+
+def reboot_keys(ce_major: Optional[int]) -> Tuple[str, ...]:
+    if ce_major is not None and ce_major >= LIVE_RESIZE_MIN_CE_MAJOR:
+        return REBOOT_KEYS
+    return REBOOT_KEYS + LIVE_RESIZE_KEYS
 
 
 @dataclass
@@ -21,7 +29,6 @@ class PropertiesSubject:
     device_dir: Path
     display_name: str
     os_ver_major: int
-    os_name: str
     forbid_guest_additions: bool
     default_width: Optional[int]
     default_height: Optional[int]
@@ -33,7 +40,6 @@ class PropertiesSubject:
             display_name=(device.meta.name or device.meta.device_name
                           or device.name),
             os_ver_major=device.meta.os_ver_major,
-            os_name=device.meta.os_name,
             forbid_guest_additions=device.meta.forbid_guest_additions,
             default_width=device.default_screen_width,
             default_height=device.default_screen_height)
@@ -45,7 +51,6 @@ class PropertiesSubject:
             device_dir=device_dir,
             display_name=meta.name or meta.device_name or device_dir.name,
             os_ver_major=meta.os_ver_major,
-            os_name=meta.os_name,
             forbid_guest_additions=meta.forbid_guest_additions,
             default_width=width,
             default_height=height)
@@ -78,9 +83,8 @@ class PropertiesModel:
         self.values["verbose_logs"] = verbose_logs
         self.initial = dict(self.values)
 
-    def reset_needing_changed(self) -> bool:
-        return any(self.values.get(k) != self.initial.get(k)
-                   for k in RESET_NEEDING_KEYS)
+    def changed(self, values: dict, keys: Iterable[str]) -> bool:
+        return any(values.get(k) != self.initial.get(k) for k in keys)
 
     def save(self, owned_keys: Iterable[str], board_rom: bool) -> None:
         values = dict(self.values)

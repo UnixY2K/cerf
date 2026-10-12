@@ -1,4 +1,5 @@
 {
+  "ga_shared_folder_mount_point": "CERF Storage",
   "operating_systems": [
     {
       "id": "windows_ce_1",
@@ -331,8 +332,8 @@
         }
       ],
       "notes": [
-        "Stock video: don't exceed 640x480 on Windows Mobile 6.5 or newer.",
-        "Stock video: don't exceed 800x600 on any OS."
+        "Stock video: don't exceed 640x480 on Windows Mobile 6.5 or newer - shell hang imminent.",
+        "Stock video: don't exceed 800x600 on any OS - CERF crash imminent."
       ],
       "configurable_screen": true,
       "lcd_panel_size": {
@@ -386,8 +387,7 @@
         }
       ],
       "notes": [
-        "CERF badly emulates stock video, it renders with artifacts. You can use it with Guest Additions instead",
-        "Audio has artifacts/glitches"
+        "Stock video: visual artifacts present"
       ],
       "lcd_panel_size": {
         "width": 240,
@@ -444,9 +444,7 @@
           "supported": true
         }
       ],
-      "notes": [
-        "Audio has artifacts/glitches"
-      ],
+      "notes": [],
       "lcd_panel_size": {
         "width": 240,
         "height": 320
@@ -606,14 +604,11 @@
           "supported": true
         }
       ],
-      "notes": [
-        "Audio has artifacts/glitches",
-        "Guest additions keyboard causes OS to HANG - switch to stock!"
-      ],
       "lcd_panel_size": {
         "width": 480,
         "height": 240
       },
+      "notes": [],
       "ga_color_depth": 24,
       "rom_placing_mode": "flat_container"
     },
@@ -649,9 +644,6 @@
           "supported": false
         }
       ],
-      "notes": [
-        "ROMs with Compositor are slower"
-      ],
       "ga_color_depth": 24,
       "rom_placing_mode": "flat_container"
     },
@@ -682,10 +674,7 @@
           "supported": false
         }
       ],
-      "notes": [
-        "CERF creates a blank HDD image on first boot when the HDD file does not exist",
-        "Guest additions: You can open apps through shared storage + task manager, only extremely simple apps will run (like literally blank Win32 skeletons)"
-      ],
+      "notes": [],
       "lcd_panel_size": {
         "width": 240,
         "height": 320
@@ -789,9 +778,7 @@
           "supported": true
         }
       ],
-      "notes": [
-        "Emulated with serious lags / audio / visual issues"
-      ],
+      "notes": [],
       "lcd_panel_size": {
         "width": 640,
         "height": 240
@@ -928,7 +915,7 @@
     },
     {
       "id": "casio_cassiopeia_em500",
-      "name": "Casio Cassiopeia EM-500",
+      "name": "Casio Cassiopeia EM-500/E-700",
       "short_name": "EM-500",
       "supported": true,
       "soc_id": "vr4122",
@@ -1021,7 +1008,8 @@
         }
       ],
       "notes": [
-        "Camera and microphone access crashes the emulator"
+        "Stock camera: access causes imminent crash",
+        "Stock microphone: access causes imminent crash"
       ],
       "lcd_panel_size": {
         "width": 320,
@@ -1386,11 +1374,9 @@
         }
       ],
       "notes": [
-        "THIS BOARD IS NOT EMULATED WELL AT ALL! All it can do is a boot to a glitching home screen and that's it",
-        "On the first boot, guest flashes the ~2GB NAND image from .sec file. It will take some time and x2 disk space. After first boot, you can remove .sec file if you are not going to re-flash.",
-        "GPU has severe visual artifacts.",
-        "A click on screen will likely crash CERF due to missing GPU implementation",
-        "Guest additions are launching if re-run with complete NAND image. Sync2UI is automatically hijacked and replaced with CE Explorer. OpenVG/Sync2 UI wont render."
+        "Stock video: some visuals are glitching; most stock features might crash it",
+        "Guest Additions: do not use this mode when booting without NAND. Flash your device first.",
+        "Guest Additions: driver will OVERWRITE your registry and permanently force WinCE Shell even for stock device runs."
       ],
       "lcd_panel_size": {
         "width": 800,
@@ -1525,6 +1511,40 @@
       ],
       "formats": [
         "esco"
+      ]
+    },
+    {
+      "id": "eeprom",
+      "name": "EEPROM",
+      "optional": true,
+      "board_ids": [
+        "jornada_720"
+      ],
+      "formats": [
+        "bin",
+        "img"
+      ]
+    },
+    {
+      "id": "primary",
+      "name": "iPAQ Upgrade Package",
+      "board_ids": [
+        "ipaq_gen1"
+      ],
+      "formats": [
+        "nbf"
+      ]
+    },
+    {
+      "id": "ce_dictionary",
+      "name": "Dictionary Dump",
+      "optional": true,
+      "board_ids": [
+        "casio_cassiopeia_e55",
+        "casio_cassiopeia_em500"
+      ],
+      "formats": [
+        "bin"
       ]
     }
   ],

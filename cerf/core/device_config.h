@@ -97,6 +97,8 @@ struct DeviceConfig : public Service {
        when the device has none. */
     std::string              rom_eeprom;
 
+    std::string              rom_ce_dictionary;
+
     std::string              rom_lumia800_user_area_erase;
 
     std::string storage_nand = "nand.img";
@@ -115,6 +117,9 @@ struct DeviceConfig : public Service {
 
     int32_t guest_additions_font_size = 0;
     bool    guest_additions_font_size_set = false;
+
+    bool guest_additions_cleartype     = false;
+    bool guest_additions_cleartype_set = false;
 
     /* Startup tab. Dev builds default to the hardware console so debug output
        shows instantly; production defaults to the boot screen. --tab overrides. */
@@ -135,8 +140,11 @@ struct DeviceConfig : public Service {
 #endif
 
     std::string share_folder;
+    std::string share_folder_mount_point;
 
     bool start_fullscreen = false;
+
+    bool no_focus = false;
 
     /* Guest-additions victim display-driver module names from the GLOBAL
        cerf.json ("video_driver_names_for_guest_additions"): the ROM modules to

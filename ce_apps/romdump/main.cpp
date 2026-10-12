@@ -7,6 +7,7 @@
    mips, ARM/_ARM_ for -Arch arm). Custom (base/size by hand) is common. */
 const Preset kPresets[] = {
 #if defined(MIPS)
+    { L"Universal MIPS Reset Vector 32MB", L"", 0x1E000000u, 32, 0 },
     /* MP790 ROM, ROMHDR VA 0x9F6FC504: physfirst 0x9E000000, physlast 0x9F70017C. */
     { L"VR41xx",
       L"NEC MP790",
@@ -19,6 +20,8 @@ const Preset kPresets[] = {
       0x1F000000u, 16, 0 },
     /* Velo 1 physfirst = PA 0x1F400000 (its ROMHDR); tighter 8 MB read. */
     { L"TX3912 Philips Velo 1", L"", 0x1F400000u, 8, 0 },
+#elif defined(SHx)
+    { L"Universal SH3 Reset Vector 32MB", L"", 0xA0000000u, 32, 0 },
 #else
     /* base = PA 0 (reset vector) for all. PXA255 stalls the bus on an
        unpopulated static chip-select, so it is sized to nCS0 (64 MB) only. */
@@ -36,6 +39,13 @@ RECT ContentRect(HWND hwnd) {
     GetClientRect(hwnd, &rc);
     rc.bottom -= PANEL_H;
     return rc;
+}
+
+FARPROC CoreProc(LPCWSTR name) {
+    HMODULE core = LoadLibraryW(L"coredll.dll");
+    FARPROC p    = core ? GetProcAddressW(core, name) : NULL;
+    if (core) FreeLibrary(core);
+    return p;
 }
 
 void AppLog(AppState* st, LPCWSTR text) {
@@ -288,10 +298,12 @@ static HWND NextTabstop(HWND parent, HWND cur, BOOL prev) {
 /* extern "C": /entry:WinMain needs an unmangled symbol; this file is C++. */
 extern "C" int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrev,
                               LPWSTR cmd, int show) {
+    typedef HCURSOR (*LoadCursorFn)(HINSTANCE, LPCWSTR);
     static AppState st;
-    WNDCLASSW wc, pc;
-    HWND      hwnd;
-    MSG       m;
+    WNDCLASSW    wc, pc;
+    HWND         hwnd;
+    MSG          m;
+    LoadCursorFn loadCursor;
 
     (void)hPrev; (void)cmd;
     memset(&st, 0, sizeof(st));
@@ -310,11 +322,8 @@ extern "C" int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrev,
     wc.cbWndExtra    = sizeof(LONG);         /* WNDX_STATE slot */
     wc.hInstance     = hInstance;
     wc.hIcon         = LoadIconW(hInstance, MAKEINTRESOURCEW(1));
-#ifdef IDC_ARROW
-    wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);
-#else
-    wc.hCursor       = NULL;   /* pen-era CE (1.0/2.0) has no stock cursors */
-#endif
+    loadCursor       = (LoadCursorFn)CoreProc(L"LoadCursorW");
+    wc.hCursor       = loadCursor ? loadCursor(NULL, IDC_ARROW) : NULL;
     wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
     wc.lpszClassName = L"CerfRomDump";
     if (!RegisterClassW(&wc)) return 1;

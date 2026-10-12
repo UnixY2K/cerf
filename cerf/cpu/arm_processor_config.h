@@ -32,13 +32,6 @@ public:
        the JIT to advance ArmCpuState::guest_cycle_counter inline. */
     virtual uint16_t CycleCostFor(const DecodedInsn& d) const;
 
-    /* SA-1110 Dev Man §8.2 Table 8-1: CCF 01011 = 56 x the 3.6864-MHz
-       crystal; §9.4.1: the OSCR increments on that crystal's rising edges. */
-    virtual uint32_t CpuToOscrDivider()           const { return 56; }
-
-    virtual uint32_t CpuToHighfreqClockDivider()  const { return 1; }
-    virtual uint32_t CpuToLowfreqClockDivider()   const { return 1; }
-
     virtual uint32_t CpuClockHz()                 const = 0;
 
     virtual bool     HasDsp()                     const = 0;
@@ -78,6 +71,10 @@ public:
        (p. A5-216): "All encodings in this space are UNPREDICTABLE in
        ARMv4 and ARMv4T." */
     virtual bool     HasArmv5UnconditionalSpace() const { return false; }
+
+    /* ARM DDI 0100I p. A4-75: "Accessing the SPSR when in User mode or
+       System mode is UNPREDICTABLE." */
+    virtual bool     AccessesSpsrInSystemMode()   const { return false; }
 
     virtual bool     HasMls()                     const { return false; }
     virtual bool     HasMovwMovt()                const { return false; }

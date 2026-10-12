@@ -12,8 +12,7 @@ There are **three layers**, read in this order:
 | 3 | `cerf-user.json` | `devices/<name>/` | the launcher, on your behalf - optional |
 
 CERF applies each layer on top of the previous one, key by key. CERF applies the command line last,
-so a flag always wins over a file. Every field is optional, and CERF runs when none of them are
-present.
+so a flag always wins over a file. Every field is optional.
 
 CERF ignores unknown keys. If a file is unreadable or malformed, CERF names the file and the key,
 then exits.
@@ -25,13 +24,13 @@ values into each device's configuration before it reads that device's own file.
 
 ```json
 {
-  "device": "cerfos",
+  "device": "jornada720",
   "video_driver_names_for_guest_additions": [
     "ddi.dll",
     "s3c2410disp.dll"
   ],
   "bundle_repositories": [
-    { "url": "https://cerf-bundles.dz3n.net/cerf-bundles", "enabled": true }
+    { "url": "https://example.com/bundles", "enabled": true }
   ],
   "last_save_state_mode": false,
   "discord_rich_presence": false,
@@ -41,7 +40,7 @@ values into each device's configuration before it reads that device's own file.
 
 | Key | Type | Meaning |
 | --- | --- | --- |
-| `device` | string | The device directory to boot when the command line has no `--device=`. |
+| `device` | string | The device directory to boot when the command line has no `--device=`. When this key and `--device=` are both empty, CERF exits with an error. |
 | `video_driver_names_for_guest_additions` | array of strings | The ROM display-driver module names that [Guest Additions](guest-additions.md) can replace with the CERF driver. |
 | `bundle_repositories` | array of `{ url, enabled }` | The [ROM bundle repositories](bundle-repositories.md) that the launcher installs and updates from. Launcher only - `cerf.exe` does not read it. |
 | `last_save_state_mode` | boolean | The default state of **Save the state** in the shutdown dialog. |
@@ -133,7 +132,9 @@ device can declare here.**
 | `guest_additions.enabled` | boolean | Boot with Guest Additions. The same as `--guest-additions`. |
 | `guest_additions.override_color_scheme` | string | The system color scheme that the guest driver applies. The same as `--ga-color-scheme`. |
 | `guest_additions.override_font_size` | integer | The system font height, in logical units. The same as `--ga-font-size`. |
-| `guest_additions.share_folder` | string | A host folder that CERF mounts into the guest as ``\CERF Storage\``. The same as `--ga-share-folder`. |
+| `guest_additions.override_cleartype` | boolean | `true` turns ClearType on in the guest when the shell is up, and `false` turns it off. When the key is absent, the ROM's own setting stays. |
+| `guest_additions.share_folder` | string | A host folder that CERF mounts into the guest. The same as `--ga-share-folder`. |
+| `guest_additions.shared_folder_mount_point` | string | The name of the guest root folder that shows the shared folder. |
 | `guest_additions.autorun` | array of strings | Guest paths. When the shell is up, the guest driver starts each path, in order. `--ga-autorun=PATH` replaces the array. |
 | `full_screen` | boolean | Enter borderless full screen at startup. |
 | `adopt_guest_additions_resolution_for_host_screen` | boolean | Size the Guest Additions display to the host monitor instead of the configured resolution. |
@@ -159,7 +160,7 @@ file is lost. The launcher therefore writes your choices here instead:
 ```json
 {
   "launcher": {
-    "repository_url": "https://cerf-bundles.dz3n.net/cerf-bundles",
+    "repository_url": "https://example.com/bundles",
     "name_on_repository": "devemu_ce5"
   },
   "meta": { "name": "My CE 5 box" },

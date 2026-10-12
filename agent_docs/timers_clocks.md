@@ -23,6 +23,26 @@ rate of the SoC.
   A host-referenced observer sees the replay of at most one window when a
   busy guest becomes idle, and the guest cannot see it.
 
+## What runs on guest time
+
+- **Every state that the guest can see advance with time runs on guest
+  time.** A timer is one case. The same rule covers a frame or scan-line
+  status bit and a line counter. It also covers a transfer that completes
+  after a delay, a sample rate, a baud rate and a conversion time. The rule
+  holds for a part on every board and every CPU architecture. A shared part
+  never selects its time base by architecture.
+- **While guest time runs, a host clock, a host thread and a list of host
+  deadlines are never the time base of a guest-visible state.**
+- **When the guest reads a polled state, the part computes that state from
+  the cycle count.** A status bit, a line counter or a count register needs
+  no event and no thread.
+- **A part arms an event at a cycle count only where the silicon raises an
+  interrupt at that moment.** The interrupt line must rise at the cycle of the
+  edge, not at the next register read.
+- **Every period comes from the registers that the guest programs.** When the
+  guest changes the period or the CPU rate changes, a part recomputes the
+  period.
+
 ## Idle
 
 - **A wait-for-interrupt completes only on an interrupt.** ARM DDI 0406C
@@ -67,20 +87,29 @@ that timer is what makes it dangerous.
 
 - **The catch-up loop.** Many SA-11xx and PXA kernels re-arm with
   `OSMR0 += period`. The kernel repeats that add while `OSMR0 - OSCR` is
-  under a small margin. The loop therefore walks one period per pass until
-  the match is ahead of the counter again. **Whether the millisecond counter
+  under a small margin, and some kernels also while that distance is more
+  than one period. The loop therefore walks one period per pass until the
+  match is ahead of the counter again. **Whether the millisecond counter
   is credited inside that loop or once after it is a per-kernel choice, and
   it decides what lateness costs.**
   A kernel that credits inside the loop credits every period the loop walks.
   A kernel that credits once after it credits one period however many the
-  loop walked. The subtraction is unsigned. An entry that is late by about
-  one period lands in a narrow residue band whose values are less than the
-  exit margin. In that band the loop walks 2^32 / period passes. At
-  3.6864 MHz that is 1,165,211 passes, or 19.4 minutes of guest time inside
-  one interrupt. That is the tick death. A store that lands at or behind the
-  counter laps 2^32 ticks (1165 s at 3.6864 MHz). The channel is then dead
-  until the guest rewrites it. On the cycle clock an entry is never late, so
-  the loop runs one pass.
+  loop walked.
+- **The tick death.** The subtraction is unsigned. An entry that is late by
+  nearly one period or more can land in a narrow residue band. In that band
+  the distance is less than the exit margin. In a kernel with both tests, the
+  next pass leaves the match more than one period ahead. The loop then walks
+  until the distance wraps through 2^32. Each pass also moves the counter by
+  the time of that pass. The lap therefore takes a little more than
+  2^32 / period passes, roughly 1.165 million at a 3686-tick period.
+
+  A kernel that credits inside the loop moves its clock by that many periods,
+  about 19.4 minutes at 1 ms each. A store that lands at or behind the counter
+  laps 2^32 ticks (1165 s at 3.6864 MHz). The channel is then dead until the
+  guest rewrites it.
+- **Late entries.** On the cycle clock CERF never makes an entry late. A guest
+  that masks the tick while it waits on the counter makes the entry late
+  itself, by the whole wait.
 - **Per-pass and per-entry credit.** A kernel credits either once per loop
   pass or once per entry, in units of its own tick period, and some re-check
   the distance after the re-arm and credit again.
@@ -149,12 +178,14 @@ service. It also skips itself when any of these holds:
 
 - The write advances the compare by a whole number of tick periods. The kernel
   preserved its grid.
-- The kernel read the counter and then the compare register with the status bit
-  clear. It had the phase and banked it itself. A kernel that wakes on another
-  interrupt before its tick measures the phase with this pair, and its exit
-  re-base then discards nothing. Interrupts can be masked or unmasked at that
-  read.
-- The phase is zero, or the advance reaches the compare the kernel just armed.
+- The kernel read the counter and the compare register with the status bit
+  clear. It had the phase and banked it itself. The pair counts in either
+  order: the counter before the compare, or the compare with the counter as
+  the next timer read. A kernel that wakes on another interrupt before its tick
+  uses this pair to measure the phase. Its exit re-base then discards nothing.
+  Interrupts can be masked or unmasked at that read.
+- The phase is zero, or the advance reaches the compare that the kernel just
+  armed.
 
 The tick period comes from the handler stores of the kernel itself. Two consecutive
 equal steps confirm it, because a catch-up loop store is a multiple of the
@@ -200,6 +231,27 @@ it advances the compare always writes between the match and the read. The kind
 of that write then decides. A kernel that advances the compare before it
 services the match writes nothing there. The absence then decides.
 
+**The walk-away step.** It serves a kernel whose catch-up loop also repeats
+while the match is more than one period ahead. A late entry can end a pass with
+the match ahead of the counter by less than the exit margin. The loop then adds
+one more period, and the match is more than a period ahead. Each later pass
+moves it further, so the loop runs until the 32-bit wrap.
+
+The step acts on a tick-channel compare write that is not the first since the
+kernel cleared the status bit. The write advances the compare by one tick period,
+and the compare that it replaces is more than one period ahead of the counter.
+The timer then advances the counter to the replaced compare, and the next check of
+the kernel finds the match one period ahead. The loop ends there.
+
+No tick-channel match fires, because the compare already moved past the point
+that the counter reaches. The timer delivers the match of every other channel whose
+compare lies inside the advance. A kernel that credits one period for each pass
+then credits exactly the grid points that the counter passed. A kernel that
+credits once per entry credits one period, as for any late entry. Before two
+equal steps confirm the tick period, the step takes it from the first store of
+the handler.
+The late entry after a wake comes before that confirmation.
+
 **A measurement over every kernel settles a correction.** Before a correction
 lands, that measurement covers every kernel on the shared model. It records the
 register behavior that selects the correction. A correction that is inert on
@@ -228,7 +280,15 @@ timer change measured on it.
 
 ## Hibernation and deep sleep
 
-A timer on the clock saves its live count and re-anchors it at the restored
-guest time. The deep-sleep park stops guest time, so a timer stops as on
-silicon. The contracts are in [hibernation.md](hibernation.md) and
-[deep_sleep.md](deep_sleep.md).
+A timer on the clock saves its live count. The timer re-anchors this count at
+the restored guest time.
+
+The deep-sleep park stops guest time. A timer therefore stops for the length of
+the park. On silicon, the same timer also stops in sleep.
+
+A datasheet can state that the counter of a timer is unaffected by the
+transition into and out of sleep. That timer does not stop. That timer counts
+the full length of the park. That length comes from the wall clock.
+
+A chip in sleep can keep an oscillator in operation. The same chip can remove
+power from the counter that this oscillator feeds.

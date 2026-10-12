@@ -31,9 +31,9 @@ across power cycles. CERF instead wipes all guest RAM on close. Every exit is
 effectively a cold boot, and all guest state from since boot is lost. Hibernation
 preserves the full running machine across an exit.
 
-**Triggers:** the Actions-menu Save/Load state, a Shutdown dialog on window close
-(save-on-exit), and a boot-time prompt when a default `state.img` exists in the
-device directory.
+**Triggers:** the Actions-menu Save/Load state, and a Shutdown dialog on window
+close (save-on-exit). At startup, the `--boot` mode selects what CERF does with a
+default `state.img` in the device directory.
 
 ## The `.img` format
 
@@ -77,8 +77,14 @@ machine. A rollback that fails is a CERF bug, and CERF halts.
 
 The magic moves only when the frame or tag encoding in `state_stream` changes.
 
-A `RestoreState` never calls `CerfFatalExit` or `Fatal::Die` on a value it read
-from the image. It calls `r.Reject`, which refuses the image.
+**A `RestoreState` does not compare a value against a state that CERF never produces.**
+Such a state reaches an image in two ways only. In the first, CERF corrupted the
+state, and the defect to fix is the corruptor. In the second, a user edited the
+file. A check against such a state is dead code.
+
+An image can carry a value that CERF produced under another configuration, for
+example a display depth that the user changed after the save. The reader refuses
+it with `r.Reject`, never with `CerfFatalExit` or `Fatal::Die`.
 
 A buffer whose size this build fixes is read at that size, with no saved count.
 The byte-block tag then refuses an image that saved another size.
@@ -210,10 +216,9 @@ freeze model.
   level from `PostRestore` - see
   [agent_docs/timers_clocks.md](timers_clocks.md) § Hibernation and deep sleep.
   A host-clock source re-anchors to `Clock::now()`.
-- **In-flight host coupling** resets on restore, because no host sink / pen /
-  socket exists after a restore. In RestoreState or PostRestore, clear audio-DMA
-  `in_flight`/`tx_running`, touch `pen_down`/`pen_timer_enabled`, and the
-  equivalent flags. See `sa11xx_dma`, `sa1111_sac`, `odo_arm720_touch_sound`.
+- **In-flight host coupling** resets on restore, because no host sink, pen, or
+  socket exists after a restore. Examples are an audio transfer in flight and a
+  held pen. Clear this state in RestoreState or PostRestore.
 
 ## What NOT to serialize (host-side members)
 

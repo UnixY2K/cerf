@@ -24,6 +24,7 @@ public:
 
     void BeginAudioOut(std::function<void()> on_block_done);
     bool QueueOutput(const void* host_bytes, uint32_t length);
+    void QueueOutputInHostBlocks(const void* host_bytes, uint32_t length);
     void FinishAudioOut();
     void StopAudioOut();
 
@@ -45,6 +46,9 @@ private:
 
     static constexpr UINT kMsgSetFormat    = WM_USER + 41;
     static constexpr UINT kMsgFlushPending = WM_USER + 42;
+
+    static constexpr uint32_t kHostBlockFrames = 512;
+    static constexpr uint32_t kHostBlockRateHz = 44100;
 
     static constexpr uint32_t kSlots = 8;
     static_assert(kSlots <= WaveOutSink::kSilentQueue,
@@ -79,6 +83,7 @@ private:
     double                set_point_frames_ = 0.0;
     uint32_t              starved_        = 0;
     uint32_t              device_epoch_   = 0;
+    uint32_t              sink_generation_ = 0;
     uint32_t              unfed_total_    = 0;
     bool                  position_valid_ = false;
     uint32_t              position_       = 0;

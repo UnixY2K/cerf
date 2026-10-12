@@ -3,6 +3,7 @@
 #include "host_screenshot.h"
 
 #include "../core/cerf_emulator.h"
+#include "../core/cerf_paths.h"
 #include "../core/device_config.h"
 #include "../core/log.h"
 #include "../core/string_utils.h"
@@ -63,10 +64,8 @@ void HostScreenshot::Save() {
         LOG(Lcd, "HostScreenshot::Save: no guest frame to capture\n");
         return;
     }
-    const std::string dev = emu_.Get<DeviceConfig>().meta.device_name.empty()
-        ? emu_.Get<DeviceConfig>().device_name
-        : emu_.Get<DeviceConfig>().meta.device_name;
-    SavePixels(px, w, h, Utf8ToWide(dev.c_str()));
+    SavePixels(px, w, h,
+               Utf8ToWide(emu_.Get<DeviceConfig>().device_name.c_str()));
 }
 
 void HostScreenshot::Copy() {

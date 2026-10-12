@@ -108,8 +108,9 @@ manual work to stay in step with the Properties sheet.
 1. `cerf.exe` writes `devices/<device>/transactional-XXXXXXXX-XXXX.json`. Each
    top-level key names one dialog to run:
 
-        { "live_customizations": { "query": { "force_reboot": true,
-                                              "default_reset": "soft" } } }
+        { "live_customizations": { "query": { "force_reboot": false,
+                                              "ce_version": { "major": 4,
+                                                              "minor": 20 } } } }
 
    `query` carries what the dialog cannot know by itself. It can be empty.
    More than one key runs more than one dialog, one after the other.
@@ -135,6 +136,15 @@ manual work to stay in step with the Properties sheet.
 with every control that needs a restart of `cerf.exe` disabled. Every `cerf.exe`
 entry point that edits a Guest Additions setting sends this one request.
 
+The request proves that Guest Additions run, so the sheet shows them enabled,
+and OK saves them enabled.
+
+Some fields take effect only after a guest reset. When the user changes one,
+the sheet marks it, and OK asks which reset to run. The resolution is such a
+field when the guest is older than CE 4. It is also such a field when
+`ce_version` is absent, because CERF cannot read the version from the ROM.
+`force_reboot` skips the question and answers `"soft"`.
+
 ### What the refresh does
 
 Each caller decides whether to run the refresh. `LauncherTransaction` never runs
@@ -150,8 +160,8 @@ value the launcher just wrote.
 Two services keep their own copy of a refreshed field, so each one registers a
 listener:
 
-- `FolderShareConfig` re-applies the path at once, because the shared folder is
-  live.
+- `FolderShareConfig` re-applies the path and the mount name at once, because
+  the shared folder is live.
 - `CerfVirtColorScheme` re-reads its table at the next CPU reset, because the
   guest reads that table only when its display driver starts.
 
@@ -175,20 +185,21 @@ installation, not a supported state.
 
 ## Bundles
 
-A bundle is one ROM package on a remote repository. `bundle_repositories.py`
-reads the repository list from the global `cerf.json`. The default repository is
-`https://cerf-bundles.dz3n.net/cerf-bundles`. Each repository serves
-`manifest.json` (version 2 only) and `analytics.json`.
+A bundle is one ROM package on a remote repository. Each repository serves
+`manifest.json` and `analytics.json`. The launcher reads only version 2 of
+`manifest.json`.
 
 A bundle update replaces the device directory with the new bundle. The update
-**keeps** `cerf-user.json`, every installed add-on package and every storage file
+keeps `cerf-user.json`, every installed add-on package and every storage file
 inside the device directory.
-`devices/manifest.json` records what is installed, keyed by directory name. A
-bundle is out of date when its recorded archive SHA-256 differs from the remote
-one.
 
-The launcher verifies the size and the SHA-256 of every archive. Extraction
-rejects any member that escapes the target directory.
+The launcher records each installed bundle in `devices/manifest.json`, under the
+name of its device directory. A bundle is out of date when the SHA-256 of its
+archive in that file differs from the SHA-256 in the remote manifest.
+
+The launcher makes sure that the size and the SHA-256 of each archive match the
+manifest. During extraction, it rejects each file in the archive whose path is
+outside the target directory.
 
 ## Starting cerf.exe
 
@@ -254,16 +265,20 @@ Use nothing newer: no walrus `:=`, no `Path.unlink(missing_ok=)`, no
 call runs on a modern interpreter and then fails inside the shipped exe, where
 nobody sees the traceback.
 
+Give every text-mode `open`, `read_text` and `write_text` an explicit `encoding`.
+Without it, Python 3.7 uses the ANSI code page of the host. Python then reads and
+writes non-ASCII text differently on each locale.
+
+Make a path absolute with `os.path.abspath`, never with `Path.resolve()`. In
+Python 3.7, `resolve()` asks the volume for the final name of the path. Some
+volumes refuse that query, and the call then raises. A RAM disk that holds
+`%TEMP%` is one example. When code must refuse a junction before it deletes or
+extracts, it tests the reparse-point attribute directly. That attribute marks a
+junction or a symbolic link.
+
 Run the cached interpreter on every launcher file:
 
     references/python/cpython-3.7.9-x86/python.exe -m py_compile launcher/*.py
-
-`launcher/build.ps1` runs PyInstaller 5.13.2 with that interpreter in
-one-directory mode. The launcher directory includes the UCRT redistributable. The
-script copies that directory to `bundled/launcher/`, and it compiles the
-forwarder with MSVC into `bundled/launcher.exe`. The top-level `build.ps1` runs
-the script when any launcher file changes. `CopyBundledFiles` puts both into the
-build output.
 
 ## Rules
 

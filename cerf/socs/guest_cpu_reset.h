@@ -22,7 +22,7 @@ public:
 /* A register's reset value depends on which reset line drove it: the VR41xx register
    tables carry an "RTCRST" row and an "Other resets" row, and they differ (VR4102 UM
    23.2.3: LEDCNTREG RTCRST = 0x0002, other resets "Previous value is retained"). */
-enum class ResetLineKind { Rtc, Other };
+enum class ResetLineKind { Rtc, Other, Watchdog };
 
 /* Routes CERF-initiated CPU resets through the SoC's reset-cause latch
    before pending the reset. On cause-tracking SoCs a causeless reset
@@ -57,6 +57,7 @@ public:
     void OnResetDelivered();
 
     bool DeliveredResetWasResume() const { return delivered_is_resume_; }
+    bool LineHeld() const { return line_held_; }
 
     void SaveState(StateWriter& w) const;
     void RestoreState(StateReader& r);
@@ -68,4 +69,5 @@ private:
     std::atomic<ResetLineKind>                      pending_kind_{ResetLineKind::Other};
     std::atomic<bool>                               pending_is_resume_{false};
     bool                                            delivered_is_resume_ = false;
+    bool                                            line_held_           = false;
 };

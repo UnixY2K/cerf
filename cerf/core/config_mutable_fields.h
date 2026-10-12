@@ -2,6 +2,7 @@
 
 #include "config_json.h"
 #include "device_config.h"
+#include "share_folder_mount_name.h"
 
 #include <string>
 
@@ -14,7 +15,10 @@ inline void CfgResetMutableFields(DeviceConfig& config) {
     config.guest_additions_color_scheme.clear();
     config.guest_additions_font_size = 0;
     config.guest_additions_font_size_set = false;
+    config.guest_additions_cleartype     = false;
+    config.guest_additions_cleartype_set = false;
     config.share_folder.clear();
+    config.share_folder_mount_point.clear();
 }
 
 inline void CfgLoadMutableScreenFields(const nlohmann::json& board,
@@ -62,6 +66,18 @@ inline void CfgLoadShareFolder(const nlohmann::json& ga, DeviceConfig& config,
         CfgFatal(path, "'guest_additions.share_folder' must be a string (or null)");
 }
 
+inline void CfgLoadShareFolderMountPoint(const nlohmann::json& ga,
+                                         DeviceConfig& config,
+                                         const std::string& path) {
+    if (!ga.contains("shared_folder_mount_point")) return;
+    const auto& v = ga["shared_folder_mount_point"];
+    if (v.is_null()) return;
+    if (!v.is_string() || !IsValidShareFolderMountName(v.get<std::string>()))
+        CfgFatal(path, "'guest_additions.shared_folder_mount_point' must be a "
+                       "valid mount point name (or null)");
+    config.share_folder_mount_point = v.get<std::string>();
+}
+
 inline void CfgLoadColorScheme(const nlohmann::json& ga, DeviceConfig& config,
                                const std::string& path) {
     if (!ga.contains("override_color_scheme")) return;
@@ -84,6 +100,18 @@ inline void CfgLoadGaFontSize(const nlohmann::json& ga, DeviceConfig& config,
     config.guest_additions_font_size_set = true;
 }
 
+inline void CfgLoadGaClearType(const nlohmann::json& ga, DeviceConfig& config,
+                               const std::string& path) {
+    if (!ga.contains("override_cleartype")) return;
+    const auto& v = ga["override_cleartype"];
+    if (v.is_null()) return;
+    if (!v.is_boolean())
+        CfgFatal(path, "'guest_additions.override_cleartype' must be a boolean "
+                       "(or null)");
+    config.guest_additions_cleartype     = v.get<bool>();
+    config.guest_additions_cleartype_set = true;
+}
+
 inline void CfgLoadMutableFields(const nlohmann::json& root,
                                  DeviceConfig& config,
                                  const std::string& path) {
@@ -97,7 +125,9 @@ inline void CfgLoadMutableFields(const nlohmann::json& root,
         if (ga.is_object()) {
             CfgLoadColorScheme(ga, config, path);
             CfgLoadGaFontSize(ga, config, path);
+            CfgLoadGaClearType(ga, config, path);
             CfgLoadShareFolder(ga, config, path);
+            CfgLoadShareFolderMountPoint(ga, config, path);
         }
     }
 }

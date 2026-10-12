@@ -11,6 +11,7 @@ from typing import Callable, Dict, Optional, Tuple
 
 from copyright_removal_dialog import (BUTTON_LABEL as COPYRIGHT_BUTTON_LABEL,
                                       ContactsFn, show_copyright_removal)
+from device_source_text import source_credit
 from device_state import DeviceSource
 from dialog_buttons import pack_actions
 import ui_theme as theme
@@ -19,6 +20,7 @@ import ui_theme as theme
 DISCORD_URL = "https://discord.gg/QREE9Y2v2d"
 WEBSITE_URL = "https://cerf.cx"
 GUEST_ADDITIONS_URL = "https://cerf.cx/articles/guest-additions/"
+BUNDLE_REPOSITORIES_URL = "https://cerf.cx/articles/bundle-repositories/"
 HIBERNATION_WARNING_URL = "https://cerf.cx/hibernation-warning"
 
 # Funding target, mirroring .github/FUNDING.yml (patreon: dz3n) - that file is
@@ -170,41 +172,18 @@ def confirm_rom_license(parent: tk.Misc, display_name: str,
     )
 
 
-def show_dpi_help(parent: tk.Misc) -> None:
-    show_info(
-        parent,
-        "Display DPI override",
-        "Overrides the logical DPI (pixels-per-inch) the CERF guest display "
-        "driver reports to the OS. It changes what the OS believes the screen "
-        "density is - it most likely causes rendering artifacts and broken "
-        "graphics."
-    )
-
-
 def show_bpp_help(parent: tk.Misc) -> None:
     show_info(
         parent,
-        "Color depth override",
-        "Some boards and guest additions allow to change BPP. Windows CE "
-        "guest apps are often very picky.\n\n"
-        "• Auto - Make CERF automatically pick depth per known values.\n"
-        "• 8 bpp - Should be used for Windows CE 2.0.\n"
-        "• 16 bpp - Known to work best for Windows CE 2.11-3 era.\n"
-        "• 24 bpp - Known to work best for all CE eras.\n"
-        "• 32 bpp - Supported ~since CE 2.11+ but often breaks rendering "
-        "in guest apps."
-    )
-
-
-def show_color_scheme_help(parent: tk.Misc) -> None:
-    show_info(
-        parent,
-        "Color scheme override",
-        "Forces a fixed system color scheme onto the guest. Handy to colorize "
-        "grayscale devices (which render everything in black and white) with a "
-        "proper colored theme, or to restyle any CE desktop.\n\n"
-        "It is applied by force and may refuse to work on some ROMs, because "
-        "the approach is hacky rather than a supported OS feature."
+        "Color depth",
+        "Some values can break the guest. Keep the default value unless you "
+        "have a reason to change it.\n\n"
+        "• Auto - the depth that is known to work on this device.\n"
+        "• 8bpp - for Windows CE 2.0.\n"
+        "• 16bpp - works best for Windows CE 2.11 and 3.0.\n"
+        "• 24bpp - works for every Windows CE version.\n"
+        "• 32bpp - Windows CE 2.11 and later. It often breaks the rendering "
+        "of guest apps."
     )
 
 
@@ -219,12 +198,6 @@ def link_label(parent: tk.Misc, text: str, url: str) -> ttk.Label:
     return lbl
 
 
-def _maybe_link(parent: tk.Misc, text: str, url: str) -> ttk.Label:
-    """A clickable link when url is set, otherwise the same text as plain
-    (non-clickable) label."""
-    return link_label(parent, text, url) if url else ttk.Label(parent, text=text)
-
-
 def show_source_thanks(parent: tk.Misc, source: DeviceSource) -> None:
     show_sources_thanks(parent, [source] if source is not None else [])
 
@@ -233,7 +206,7 @@ def show_sources_thanks(parent: tk.Misc, sources) -> None:
     distinct: list = []
     seen: set = set()
     for s in sources:
-        if s is not None and s.has_links and s.name not in seen:
+        if s is not None and s.has_website_and_donate and s.name not in seen:
             seen.add(s.name)
             distinct.append(s)
     if not distinct:
@@ -252,14 +225,13 @@ def show_sources_thanks(parent: tk.Misc, sources) -> None:
         if i:
             ttk.Label(body, text="").pack(anchor="w")
         ttk.Label(body, wraplength=420, justify="left",
-                  text=f"This ROM bundle was preserved and provided by "
-                       f"{source.name}.").pack(anchor="w")
+                  text=source_credit(source)).pack(anchor="w")
         ask = ttk.Frame(body)
         ask.pack(anchor="w", pady=(6, 0))
         ttk.Label(ask, text="Would you like to ").pack(side="left")
-        _maybe_link(ask, "pay them a visit", source.website).pack(side="left")
+        link_label(ask, "pay them a visit", source.website).pack(side="left")
         ttk.Label(ask, text=" or ").pack(side="left")
-        _maybe_link(ask, "support them", source.donate).pack(side="left")
+        link_label(ask, "support them", source.donate).pack(side="left")
         ttk.Label(ask, text="?").pack(side="left")
         if source.origin:
             link_label(body, "Source data link", source.origin).pack(anchor="w")

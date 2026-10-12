@@ -6,13 +6,13 @@
       Symbol Mk500 support (by @Katamaran21)
       Siemens MP377 support (by @RaulMerelli)
       Casio Toricomail: bezel touch buttons
+      Casio Cassiopeia E-700 support
     fixed: |
       Philips Velo 1: 16 MB DRAM Miniature Card permanently fitted - 20 MB total for the guest
       Device Emulator: keyboard no longer drops or repeats keys while typing
-      Device Emulator: sound no longer stutters
       Device Emulator: Windows Mobile 2003 SE no longer freezes
       Casio Toricomail: fixed rendering crashes
-      Ford Sync 2: Rendering massive improvements & navigation maps (by @cavenderbi)
+      Ford Sync 2: Massive rendering improvements, navigation maps and more (by @cavenderbi)
   emulator:
     new: |
       Configurable display colour depth for Guest Additions and Device Emulator
@@ -21,8 +21,10 @@
       Right Click simulation mode for the stock stylus (synths LAlt+Tap)
       Shutdown dialog has received reboot options
       Host key is now reassignable
+      Improved UI and added notification cards
     fixed: |
       ARM JIT and JIT core full rewrite. ARM JIT/peripherals massive performance optimizations
+      Audio systems were reworked - less sound stuttering
       Media instructions for Zune 30 - music is now playable
       System clock improvements
       Keyboard input no longer stops working after switching to another window and back
@@ -42,10 +44,13 @@
     new: |
       Virtual Ethernet adapter
       Persistant customization/settings from CERF UI
-      Windows CE 2013 support
+      Windows Embedded Compact 2013 support
       Font size override support
       Stylus simulation mode for the mouse pointer
       Shared folders on Windows CE 2.0
+      Driver automatically disables system-wide signature checks on Windows Mobile
+      Hack to the WinCE shell for Ford SYNC 2
+      ClearType support (by @RaulMerelli) and configuration
     fixed: |
       Pre-OS graphics (stock framebuffer) is now visible too and usable (switch to GA inputs is deferred now)
       Crash when drawing off-screen (GiNi)
@@ -55,6 +60,12 @@
       Mouse and keyboard no longer stop working for the whole session when input arrives early during boot
       Crash/artifacts when scrolling under complex rendering
       Apps run from a shared folder no longer crash
+      Shared folders no longer crash Explorer on Windows CE .NET
+      Fixed memory errors on Windows CE 6 branch
+  ce_apps:
+    new: |
+      romdump: SH3 support
+      romdump: universal reset vector presets for MIPS and SH3
 
 - version: v6.7
   date: 23 Jul 2026

@@ -1,13 +1,11 @@
 #define NOMINMAX
 #include "live_customizations_transaction.h"
 
-#include "../boards/board_context.h"
 #include "../boot/guest_cold_boot.h"
 #include "../core/cerf_emulator.h"
 #include "../core/device_config.h"
 #include "../core/device_config_refresh.h"
 #include "../peripherals/cerf_virt/cerf_virt_customizations_reset.h"
-#include "../peripherals/cerf_virt/cerf_virt_framebuffer.h"
 #include "../peripherals/cerf_virt/cerf_virt_resize.h"
 #include "../socs/guest_cpu_reset.h"
 #include "guest_additions_ui_policy.h"
@@ -21,12 +19,11 @@ bool LiveCustomizationsTransaction::ShouldRegister() {
 }
 
 bool LiveCustomizationsTransaction::Open(HWND owner, bool force_reboot) {
-    const bool soft_default =
-        force_reboot || emu_.Get<GuestAdditionsUiPolicy>().DefaultResetIsSoft();
-
     nlohmann::json query;
-    query["force_reboot"]  = force_reboot;
-    query["default_reset"] = soft_default ? "soft" : "none";
+    query["force_reboot"] = force_reboot;
+    uint16_t major = 0, minor = 0;
+    if (emu_.Get<GuestAdditionsUiPolicy>().CeVersion(major, minor))
+        query["ce_version"] = { { "major", major }, { "minor", minor } };
 
     auto& cfg = emu_.Get<DeviceConfig>();
     const uint32_t prev_w = cfg.board_configurable_screen_width;
@@ -55,11 +52,6 @@ void LiveCustomizationsTransaction::Apply(std::string reboot, uint32_t prev_w,
     auto& cfg = emu_.Get<DeviceConfig>();
     const uint32_t w = cfg.board_configurable_screen_width;
     const uint32_t h = cfg.board_configurable_screen_height;
-
-    const uint32_t bpp =
-        emu_.Get<BoardContext>().ResolveGuestAdditionsColorDepth();
-    if (bpp != emu_.Get<CerfVirtFramebuffer>().Bpp() && reboot.empty())
-        reboot = "soft";
 
     auto& win = emu_.Get<HostWindow>();
     if (reboot == "soft") {

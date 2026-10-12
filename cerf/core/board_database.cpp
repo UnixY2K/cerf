@@ -1,7 +1,9 @@
 #include "board_database.h"
 
 #include "cerf_emulator.h"
+#include "cerf_paths.h"
 #include "config_json.h"
+#include "share_folder_mount_name.h"
 #include "string_utils.h"
 
 #include <nlohmann/json.hpp>
@@ -25,6 +27,13 @@ std::string RequireString(const json& obj, const char* key, const std::string& p
     if (!obj.contains(key) || !obj[key].is_string() || obj[key].get<std::string>().empty())
         CfgFatal(path, ctx + "." + key + " must be a non-empty string");
     return obj[key].get<std::string>();
+}
+
+bool OptionalBool(const json& obj, const char* key, const std::string& path,
+                  const std::string& ctx) {
+    if (!obj.contains(key)) return false;
+    if (!obj[key].is_boolean()) CfgFatal(path, ctx + "." + key + " must be a boolean");
+    return obj[key].get<bool>();
 }
 
 uint32_t RequirePositiveInt(const json& obj, const char* key, const std::string& path,
@@ -55,6 +64,13 @@ void BoardDatabase::OnReady() {
     json root = CfgReadJsonFile(path);
     if (root.is_null()) CfgFatal(path, "is missing: the installation is damaged");
 
+    const char* kMountPointKey = "ga_shared_folder_mount_point";
+    if (!root.contains(kMountPointKey) || !root[kMountPointKey].is_string() ||
+        !IsValidShareFolderMountName(root[kMountPointKey].get<std::string>()))
+        CfgFatal(path, std::string("'") + kMountPointKey +
+                       "' must be a valid mount point name");
+    ga_shared_folder_mount_point_ = root[kMountPointKey].get<std::string>();
+
     for (const auto& f : RequireArray(root, "soc_families", path)) {
         if (!f.is_object()) CfgFatal(path, "soc_families[] entries must be objects");
         DbSocFamily row;
@@ -84,6 +100,7 @@ void BoardDatabase::OnReady() {
         row.short_name = d.contains("short_name")
                              ? RequireString(d, "short_name", path, ctx)
                              : row.name;
+        row.supported  = OptionalBool(d, "supported", path, ctx);
         row.soc_id     = RequireString(d, "soc_id", path, ctx);
         Soc(row.soc_id);
         if (d.contains("lcd_panel_size")) {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -11,7 +12,8 @@ DB_FILENAME = "db.json"
 
 def _db_path() -> Optional[Path]:
     candidates = [install_root() / DB_FILENAME,
-                  Path(__file__).resolve().parent.parent / "bundled" / DB_FILENAME]
+                  Path(os.path.abspath(__file__)).parent.parent / "bundled"
+                  / DB_FILENAME]
     for path in candidates:
         if path.is_file():
             return path
@@ -67,6 +69,11 @@ STORAGE_TYPES = _rows("storage_types")
 
 FEATURE_SPECS = [(f["id"], f.get("icon", f["id"]), f.get("name", f["id"]))
                  for f in DEVICE_FEATURES]
+
+
+def ga_shared_folder_mount_point() -> str:
+    value = _DB.get("ga_shared_folder_mount_point")
+    return value if isinstance(value, str) else ""
 
 
 def sort_text(value: object) -> str:

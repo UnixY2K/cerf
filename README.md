@@ -103,10 +103,20 @@ This repository includes [cerf.cx](https://cerf.cx) source code at `docs/website
 
 `python tools/build_site.py --serve` runs the website on your machine with live reload.
 
-## Claude Development Environment
+## AI Usage / Vibecode Notice
 
-> [!TIP]
-> Contributions made with AI are welcome - only if they correspond the quality level we maintain. But DO NOT turn this into an AI slop. Please read [Contribution Guidelines](.github/CONTRIBUTING.md)
+AI-assisted contributions are welcome. That's a nice thing to have in 2026 - you have access to tons of resources right in your pocket. Let me show generic use cases on this project:
+- study emulators, study JIT, study assembly on various archs, study every piece that affects your code that you don't understand how it works yet
+- learn and use AI to reverse engineer; use AI to reach for more correct architecture calls when you stall
+- use AI to find projects/resources with compatible license to learn/borrow something complex
+- use it to find manuals and papers for devices you target, SoCs/peripherals you target and to extract quotes from them
+- use it to work with and explain complex data structures and non trivial algorithms
+- use it to review your code and to criticize it 
+- the AI is an instrument to convert plain thoughts into a code - that's a replacement for typing code in order to get the same code you wanted but faster
+
+The vibe code is banned. Please read [Contribution Guidelines](.github/CONTRIBUTING.md). Do not turn this into an AI slop. We put an effort here and we maintain a quality level.
+
+## Claude Development Environment
 
 The environment includes several controversial things you need to know before using it.
 
@@ -118,7 +128,7 @@ The environment includes several controversial things you need to know before us
 - IDA MCP is ready to be installed at `tools\ida_server.py` and `tools\ida_claude.py`
 - FS Read MCP is a workaround for `Read()` tool, useful for `/tracking restore` and massive text files (`tools\fs_read_mcp.py`)
 
-The environment gives you the **`/start-board-implementation`** skill. Run the skill and agent will start the new board bring-up on its own. You need experience - the skill won't do all the work instead of you. (Tho honestly speaking, there have been cases where Claude alone brought a board to a bootable state)
+The environment gives you the **`/start-board-implementation`** skill. Run the skill and agent will start the new board bring-up on its own. You need experience - the skill won't do all the work instead of you. (it actually will do, and [that's the problem](#ai-usage--vibecode-notice))
 
 Run the environment:
 
@@ -148,7 +158,7 @@ run_claude.cmd
     <tr>
       <td align="center"><img src="launcher/assets/icons/badge_mips.png" align="middle" title="MIPS" alt="MIPS"/><br/><b>NEC VR4122</b><br/><sub>MIPS III</sub></td>
       <td>
-        <img src="cerf/assets/icons_sources/board.svg" width="16" height="16" title="PDA" alt="PDA"/> <b>Casio Cassiopeia EM-500</b> <code>casio_cassiopeia_em500</code><br/>
+        <img src="cerf/assets/icons_sources/board.svg" width="16" height="16" title="PDA" alt="PDA"/> <b>Casio Cassiopeia EM-500/E-700</b> <code>casio_cassiopeia_em500</code><br/>
         Pocket PC 2000
       </td>
       <td><img src="cerf/assets/icons_sources/stylus.svg" width="32" height="32" title="Touch" alt="Touch"/> <img src="cerf/assets/icons_sources/ga_autoresize.svg" width="32" height="32" title="Guest Additions" alt="Guest Additions"/> <img src="cerf/assets/icons_sources/speaker_active.svg" width="32" height="32" title="Sound" alt="Sound"/></td>
@@ -350,12 +360,12 @@ run_claude.cmd
           🆕 Symbol Mk500 support (by @Katamaran21)<br/>
           🆕 Siemens MP377 support (by @RaulMerelli)<br/>
           🆕 Casio Toricomail: bezel touch buttons<br/>
+          🆕 Casio Cassiopeia E-700 support<br/>
           ✅ Philips Velo 1: 16 MB DRAM Miniature Card permanently fitted - 20 MB total for the guest<br/>
           ✅ Device Emulator: keyboard no longer drops or repeats keys while typing<br/>
-          ✅ Device Emulator: sound no longer stutters<br/>
           ✅ Device Emulator: Windows Mobile 2003 SE no longer freezes<br/>
           ✅ Casio Toricomail: fixed rendering crashes<br/>
-          ✅ Ford Sync 2: Rendering massive improvements &amp; navigation maps (by @cavenderbi)</p>
+          ✅ Ford Sync 2: Massive rendering improvements, navigation maps and more (by @cavenderbi)</p>
         <p><b>💿 Emulator</b><br/>
           🆕 Configurable display colour depth for Guest Additions and Device Emulator<br/>
           🆕 Bundled CompactFlash cards can be auto-inserted at launch<br/>
@@ -363,7 +373,9 @@ run_claude.cmd
           🆕 Right Click simulation mode for the stock stylus (synths LAlt+Tap)<br/>
           🆕 Shutdown dialog has received reboot options<br/>
           🆕 Host key is now reassignable<br/>
+          🆕 Improved UI and added notification cards<br/>
           ✅ ARM JIT and JIT core full rewrite. ARM JIT/peripherals massive performance optimizations<br/>
+          ✅ Audio systems were reworked - less sound stuttering<br/>
           ✅ Media instructions for Zune 30 - music is now playable<br/>
           ✅ System clock improvements<br/>
           ✅ Keyboard input no longer stops working after switching to another window and back<br/>
@@ -376,13 +388,19 @@ run_claude.cmd
           🆕 Configurable board types, ROM and storage sources<br/>
           ✅ Launcher does not wait depend on internet connection and it&#x27;s speed to let you use it<br/>
           ✅ Toolbar buttons are now properly trimmed when not enough width</p>
+        <p><b>💾 CE Apps</b><br/>
+          🆕 romdump: SH3 support<br/>
+          🆕 romdump: universal reset vector presets for MIPS and SH3</p>
         <p><b>✨ Guest Additions</b><br/>
           🆕 Virtual Ethernet adapter<br/>
           🆕 Persistant customization/settings from CERF UI<br/>
-          🆕 Windows CE 2013 support<br/>
+          🆕 Windows Embedded Compact 2013 support<br/>
           🆕 Font size override support<br/>
           🆕 Stylus simulation mode for the mouse pointer<br/>
           🆕 Shared folders on Windows CE 2.0<br/>
+          🆕 Driver automatically disables system-wide signature checks on Windows Mobile<br/>
+          🆕 Hack to the WinCE shell for Ford SYNC 2<br/>
+          🆕 ClearType support (by @RaulMerelli) and configuration<br/>
           ✅ Pre-OS graphics (stock framebuffer) is now visible too and usable (switch to GA inputs is deferred now)<br/>
           ✅ Crash when drawing off-screen (GiNi)<br/>
           ✅ Default colour depth is now 24bpp instead of 32bpp - fixes Device Emulator Windows Mobile 6.5 shell rendering<br/>
@@ -390,7 +408,9 @@ run_claude.cmd
           ✅ Gradients on WM 2003 - the taskbar and application backgrounds render again<br/>
           ✅ Mouse and keyboard no longer stop working for the whole session when input arrives early during boot<br/>
           ✅ Crash/artifacts when scrolling under complex rendering<br/>
-          ✅ Apps run from a shared folder no longer crash</p>
+          ✅ Apps run from a shared folder no longer crash<br/>
+          ✅ Shared folders no longer crash Explorer on Windows CE .NET<br/>
+          ✅ Fixed memory errors on Windows CE 6 branch</p>
       </td>
     </tr>
     <tr>

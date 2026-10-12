@@ -9,6 +9,7 @@
 #include "../../core/cerf_emulator.h"
 #include "../../core/device_config.h"
 #include "../../core/log.h"
+#include "../../core/string_utils.h"
 #include "../../state/state_stream.h"
 
 #include <algorithm>
@@ -58,7 +59,7 @@ public:
 private:
     void LoadBody() {
         const std::string path = emu_.Get<GuestAdditionsBinaries>().BodyPath();
-        std::ifstream f(path, std::ios::binary | std::ios::ate);
+        std::ifstream f(Utf8ToWide(path.c_str()), std::ios::binary | std::ios::ate);
         if (!f.is_open()) {
             LOG(Caution, "guest body: cannot open %s - cerf_guest.dll must be "
                     "built and staged before boot\n", path.c_str());
@@ -74,7 +75,7 @@ private:
         const uint32_t need = MmioSize();
         if (need > CerfVirt::kGuestBodyMaxSize) {
             LOG(Caution, "guest body: %s needs 0x%X bytes but the body window "
-                    "is only 0x%X (0x%08X..0x%08X) - raise kFramebufferMemOffset "
+                    "is only 0x%X (0x%08X..0x%08X) - raise kDmaArenaOffset "
                     "in cerf_virt_addr_map.h\n",
                 path.c_str(), need, CerfVirt::kGuestBodyMaxSize,
                 MmioBase(),
